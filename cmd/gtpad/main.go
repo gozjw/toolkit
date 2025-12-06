@@ -72,7 +72,7 @@ func main() {
 			w.WriteHeader(http.StatusNotModified)
 			return
 		}
-		w.Header().Set("Content-Type", "image/x-icon")
+		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("ETag", iconETag)
 		w.Write(icon)
 	})
