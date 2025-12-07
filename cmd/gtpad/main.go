@@ -33,6 +33,8 @@ var (
 	scrollScale float64
 )
 
+var signalChannel chan os.Signal
+
 func init() {
 	iconETag = etag.Generate(string(icon), true)
 	indexETag = etag.Generate(string(indexHTML), true)
@@ -53,7 +55,7 @@ func main() {
 
 	ip, ipMsg := utils.GetIP()
 
-	signalChannel := make(chan os.Signal, 1)
+	signalChannel = make(chan os.Signal, 1)
 	signal.Notify(signalChannel, syscall.SIGINT, syscall.SIGTERM)
 
 	mux := http.NewServeMux()
@@ -156,6 +158,10 @@ func handleWS(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			text := string(msg[3 : 3+length])
+			if text == "--exit" {
+				signalChannel <- syscall.SIGTERM
+				return
+			}
 			robotgo.TypeStr(text)
 
 		case 5: // key press
