@@ -38,7 +38,7 @@
         }
 
         #fileTable th {
-            background: #f0f0f0;
+            background: #e5e5e5;
         }
 
         #fileTable tbody tr:hover {
@@ -201,7 +201,7 @@
                             <a class="fname" href="/dl/${encodeURIComponent(fname)}">${fname}</a>
                         </td>
                         <td>
-                            <button>删除</button>
+                            <button>{{.UseTrash}}</button>
                         </td>`;
                         const a = tr.querySelector("a.fname")
                         a.onclick = () => { a.style.color = "red"; };

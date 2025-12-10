@@ -63,6 +63,12 @@ func main() {
 	indexHTMl = strings.ReplaceAll(indexHTMl, "{{.HostName}}", hostName)
 	indexHTMl = strings.ReplaceAll(indexHTMl, "{{.WorkDir}}", workDir)
 
+	if useTrash {
+		indexHTMl = strings.ReplaceAll(indexHTMl, "{{.UseTrash}}", "移除")
+	} else {
+		indexHTMl = strings.ReplaceAll(indexHTMl, "{{.UseTrash}}", "删除")
+	}
+
 	indexETag = etag.Generate(indexHTMl, true)
 	iconETag = etag.Generate(string(icon), true)
 
@@ -70,7 +76,7 @@ func main() {
 	fmt.Printf("设备名称：%s\n", hostName)
 	fmt.Printf("工作目录：%s\n", workDir)
 	fmt.Printf("网页链接：http://%s:%d %s\n", ip, port, ipMsg)
-	fmt.Printf("回收站：%t\n", useTrash)
+	fmt.Printf("放入回收站：%t\n", useTrash)
 	server := &http.Server{
 		Addr:        addr,
 		Handler:     &Engine{},
