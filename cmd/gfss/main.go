@@ -70,6 +70,7 @@ func main() {
 	fmt.Printf("设备名称：%s\n", hostName)
 	fmt.Printf("工作目录：%s\n", workDir)
 	fmt.Printf("网页链接：http://%s:%d %s\n", ip, port, ipMsg)
+	fmt.Printf("回收站：%t\n", useTrash)
 	server := &http.Server{
 		Addr:        addr,
 		Handler:     &Engine{},
