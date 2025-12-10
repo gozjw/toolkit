@@ -17,5 +17,8 @@ http://<电脑IP>:9527
 -  -d string    
     工作目录
     
+-  -t     
+    删除时放入回收站
+    
 -  -p int    
     端口号 (default 9527)

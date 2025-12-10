@@ -35,6 +35,7 @@ var iconETag string
 var serverName = "文件共享"
 var hostName string
 var workDir string
+var useTrash bool
 var port int64
 var tmpSuffix = ".tmp"
 
@@ -45,6 +46,7 @@ func main() {
 	hostName, _ = os.Hostname()
 
 	flag.StringVar(&workDir, "d", workDir, "工作目录")
+	flag.BoolVar(&useTrash, "t", false, "删除时放入回收站")
 	flag.Int64Var(&port, "p", 9527, "端口号")
 	flag.Parse()
 
@@ -133,10 +135,18 @@ func deleteHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = trash.Throw(filepath.Join(workDir, fileName))
-	if err != nil {
-		writeErrorRsp(w, http.StatusInternalServerError, "删除文件失败", err)
-		return
+	if useTrash {
+		err = trash.Throw(filepath.Join(workDir, fileName))
+		if err != nil {
+			writeErrorRsp(w, http.StatusInternalServerError, "放入回收站失败", err)
+			return
+		}
+	} else {
+		err = os.Remove(filepath.Join(workDir, fileName))
+		if err != nil {
+			writeErrorRsp(w, http.StatusInternalServerError, "删除文件失败", err)
+			return
+		}
 	}
 
 	w.Write([]byte("删除成功"))
