@@ -52,6 +52,7 @@ func log(calldepth int, level string, id string, params ...any) {
 		return
 	}
 
+	text.WriteString("\n")
 	logLock.Lock()
 	defer logLock.Unlock()
 	os.Stdout.Write(text.Bytes())
