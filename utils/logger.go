@@ -1,10 +1,12 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path"
 	"runtime"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -12,18 +14,47 @@ import (
 var logLock sync.Mutex
 
 func log(calldepth int, level string, id string, params ...any) {
-	var now = time.Now().Format("2006-01-02 15:04:05")
-	_, file, line, _ := runtime.Caller(calldepth)
-	var msg string
-	for i, p := range params {
-		msg += fmt.Sprintf("%+v", p)
-		if i != len(params)-1 {
-			msg += " "
+	var text = bytes.NewBuffer(make([]byte, 0, 128))
+	text.WriteString(time.Now().Format("2006-01-02 15:04:05|"))
+
+	text.WriteString(level)
+	text.WriteString("|")
+
+	text.WriteString(id)
+	text.WriteString("|")
+
+	pc, file, line, ok := runtime.Caller(calldepth)
+	text.WriteString(path.Base(file))
+	text.WriteString(":")
+	text.WriteString(strconv.Itoa(line))
+	text.WriteString("|")
+
+	if ok {
+		var fn = runtime.FuncForPC(pc).Name()
+		for i := len(fn) - 1; i >= 0; i-- {
+			if fn[i] == '.' {
+				text.WriteString(fn[i+1:])
+				text.WriteString("|")
+				break
+			}
 		}
 	}
+
+	var l = text.Len()
+	for i, p := range params {
+		fmt.Fprintf(text, "%+v", p)
+		if i != len(params)-1 {
+			text.WriteString(" ")
+		}
+	}
+
+	if text.Len() == l {
+		return
+	}
+
 	logLock.Lock()
 	defer logLock.Unlock()
-	fmt.Fprintf(os.Stdout, "%s|%s|%s:%d|%s|%s\n", now, level, path.Base(file), line, id, msg)
+	os.Stdout.Write(text.Bytes())
 }
 
 type Logger struct {
