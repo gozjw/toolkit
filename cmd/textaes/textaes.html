@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>文本加解密</title>
+
+    <style>
+        :root {
+            --bg: #f7f7f8;
+            --card: #ffffff;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --primary: #2563eb;
+            --border: #e5e7eb;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg: #0f172a;
+                --card: #020617;
+                --text: #e5e7eb;
+                --muted: #94a3b8;
+                --primary: #3b82f6;
+                --border: #1e293b;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .container {
+            max-width: 680px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
+        }
+
+        h1 {
+            font-size: 1.25rem;
+            margin-bottom: 12px;
+            text-align: center;
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--muted);
+            display: block;
+            margin-top: 14px;
+            margin-bottom: 6px;
+        }
+
+        input,
+        textarea,
+        button {
+            font-family: inherit;
+        }
+
+        input,
+        textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text);
+            font-size: 1rem;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 110px;
+            line-height: 1.5;
+            word-break: break-all;
+        }
+
+        #output {
+            font-family: "Courier New", Courier, monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        button {
+            flex: 1;
+            height: 48px;
+            border-radius: 14px;
+            border: none;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .encrypt {
+            background: var(--primary);
+            color: white;
+        }
+
+        .decrypt {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        footer {
+            text-align: center;
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 14px;
+        }
+
+        /* ===== 头部 Toast 消息样式 ===== */
+        .toast {
+            position: fixed;
+            top: calc(0px + env(safe-area-inset-top));
+            left: 50%;
+            transform: translateX(-50%) translateY(-60px);
+            background: rgba(0, 0, 0, .85);
+            color: #fff;
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 0.9rem;
+            opacity: 0;
+            pointer-events: none;
+            transition: all .25s ease;
+            z-index: 9999;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        .toast.show {
+            opacity: 1;
+            transform: translateX(-50%) translateY(10px);
+        }
+
+        .toast.success {
+            background: #16a34a;
+        }
+
+        .toast.error {
+            background: #dc2626;
+        }
+
+        .toast.info {
+            background: #2563eb;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>🔐 文本加解密</h1>
+
+            <label>口令</label>
+            <input id="password" type="password" placeholder="请输入口令">
+
+            <label>确认口令</label>
+            <input id="passwordConfirm" type="password" placeholder="请再次输入口令">
+
+            <label>明文 / 密文</label>
+            <textarea id="input" placeholder="在此输入要加密或解密的内容"></textarea>
+
+            <div class="buttons">
+                <button class="encrypt" onclick="encryptText()">加密</button>
+                <button class="decrypt" onclick="decryptText()">解密</button>
+            </div>
+
+            <label>结果</label>
+            <textarea id="output" readonly></textarea>
+
+            <footer>本地加密</footer>
+        </div>
+    </div>
+
+    <!-- 头部 Toast -->
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // AES-256-GCM
+        const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+        const passwordEl = document.getElementById("password");
+        const passwordConfirmEl = document.getElementById("passwordConfirm");
+        const inputEl = document.getElementById("input");
+        const outputEl = document.getElementById("output");
+        let toastTimer;
+
+        /* 双击明文框全选 */
+        inputEl.addEventListener('dblclick', () => inputEl.select());
+        outputEl.addEventListener('dblclick', () => outputEl.select());
+
+        /* Base64 工具 */
+        function toBase64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+        function fromBase64(str) { return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
+        /* 头部 Toast 显示 */
+        function showToast(message, type = "info") {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.className = `toast ${type} show`;
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => { toast.classList.remove("show"); }, 2000);
+        }
+
+        /* PBKDF2 派生 AES-256 密钥 */
+        async function deriveKey(password, salt) {
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]
+            );
+            return crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+                keyMaterial,
+                { name: "AES-GCM", length: 256 },
+                false,
+                ["encrypt", "decrypt"]
+            );
+        }
+
+        /* 加密 */
+        async function encryptText() {
+            const password = passwordEl.value.trim();
+            const passwordConfirm = passwordConfirmEl.value.trim();
+            const plaintext = inputEl.value.trim();
+
+            if (!password || !passwordConfirm || !plaintext) {
+                return showToast("请输入口令和内容", "info");
+            }
+
+            if (password !== passwordConfirm) {
+                return showToast("口令不一致，请重新输入", "error");
+            }
+
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12));
+            const key = await deriveKey(password, salt);
+
+            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
+            const result = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+            result.set(salt, 0);
+            result.set(iv, salt.length);
+            result.set(new Uint8Array(ciphertext), salt.length + iv.length);
+
+            outputEl.value = toBase64(result);
+            showToast("加密完成", "success");
+        }
+
+        /* 解密 */
+        async function decryptText() {
+            const password = passwordEl.value.trim();
+            const data = inputEl.value.trim();
+            if (!password || !data) return showToast("请输入口令和内容", "info");
+
+            try {
+                const raw = fromBase64(data);
+                const salt = raw.slice(0, 16);
+                const iv = raw.slice(16, 28);
+                const ciphertext = raw.slice(28);
+
+                const key = await deriveKey(password, salt);
+                const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
+
+                outputEl.value = decoder.decode(plaintext);
+                showToast("解密成功", "success");
+            } catch {
+                showToast("解密失败：口令错误或数据被篡改", "error");
+                outputEl.value = '';
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -29,6 +29,11 @@ mkdir -p "$BUILD_DIR"
 
 for dir in $TARGETS; do
     name=$(basename "$dir")
+
+    if [ ! -f "$dir/main.go" ]; then
+        continue
+    fi
+
     echo "构建：cmd/$name ..."
 
     PNG_FILE="$dir/app.png"
