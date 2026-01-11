@@ -85,7 +85,7 @@
 
         textarea {
             resize: vertical;
-            min-height: 110px;
+            min-height: 150px;
             line-height: 1.5;
             word-break: break-all;
         }
@@ -175,18 +175,18 @@
             <label>口令</label>
             <input id="password" type="password" placeholder="请输入口令">
 
-            <label>确认口令</label>
+            <label>确认口令（加密必填）</label>
             <input id="passwordConfirm" type="password" placeholder="请再次输入口令">
 
-            <label>明文 / 密文</label>
-            <textarea id="input" placeholder="在此输入要加密或解密的内容"></textarea>
+            <label>明文 / 密文（双击全选）</label>
+            <textarea id="input" placeholder="在此输入要加密或解密的内容..."></textarea>
 
             <div class="buttons">
-                <button class="encrypt" onclick="encryptText()">加密</button>
-                <button class="decrypt" onclick="decryptText()">解密</button>
+                <button id="encodeBtn" class="encrypt" onclick="encryptText()">加密</button>
+                <button id="decodeBtn" class="decrypt" onclick="decryptText()">解密</button>
             </div>
 
-            <label>结果</label>
+            <label>结果（双击全选）</label>
             <textarea id="output" readonly></textarea>
 
             <footer>本地加密</footer>
@@ -197,9 +197,10 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        // AES-256-GCM
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
+        const encodeBtn = document.getElementById("encodeBtn");
+        const decodeBtn = document.getElementById("decodeBtn");
         const passwordEl = document.getElementById("password");
         const passwordConfirmEl = document.getElementById("passwordConfirm");
         const inputEl = document.getElementById("input");
@@ -223,6 +224,12 @@
             toastTimer = setTimeout(() => { toast.classList.remove("show"); }, 2000);
         }
 
+        // 按钮置灰
+        function setBtuDisabled(v){
+            encodeBtn.disabled = v;
+            decodeBtn.disabled = v;
+        }
+
         /* PBKDF2 派生 AES-256 密钥 */
         async function deriveKey(password, salt) {
             const keyMaterial = await crypto.subtle.importKey(
@@ -239,15 +246,18 @@
 
         /* 加密 */
         async function encryptText() {
+            setBtuDisabled(true);
             const password = passwordEl.value.trim();
             const passwordConfirm = passwordConfirmEl.value.trim();
             const plaintext = inputEl.value.trim();
 
             if (!password || !passwordConfirm || !plaintext) {
+               setBtuDisabled(false);
                 return showToast("请输入口令和内容", "info");
             }
 
             if (password !== passwordConfirm) {
+                setBtuDisabled(false);
                 return showToast("口令不一致，请重新输入", "error");
             }
 
@@ -262,11 +272,13 @@
             result.set(new Uint8Array(ciphertext), salt.length + iv.length);
 
             outputEl.value = toBase64(result);
+            setBtuDisabled(false);
             showToast("加密完成", "success");
         }
 
         /* 解密 */
         async function decryptText() {
+            setBtuDisabled(true);
             const password = passwordEl.value.trim();
             const data = inputEl.value.trim();
             if (!password || !data) return showToast("请输入口令和内容", "info");
@@ -286,6 +298,7 @@
                 showToast("解密失败：口令错误或数据被篡改", "error");
                 outputEl.value = '';
             }
+            setBtuDisabled(false);
         }
     </script>
 </body>
