@@ -197,6 +197,10 @@
     <div id="toast" class="toast"></div>
 
     <script>
+        const ITERATIONS = 500000;
+        const SALT_LEN = 16;
+        const IV_LEN = 12;
+
         const encoder = new TextEncoder();
         const decoder = new TextDecoder();
         const encodeBtn = document.getElementById("encodeBtn");
@@ -225,18 +229,18 @@
         }
 
         // 按钮置灰
-        function setBtuDisabled(v){
+        function setBtnDisabled(v) {
             encodeBtn.disabled = v;
             decodeBtn.disabled = v;
         }
 
         /* PBKDF2 派生 AES-256 密钥 */
-        async function deriveKey(password, salt) {
+        async function deriveKey(password, salt, iterations) {
             const keyMaterial = await crypto.subtle.importKey(
                 "raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]
             );
             return crypto.subtle.deriveKey(
-                { name: "PBKDF2", salt, iterations: 100000, hash: "SHA-256" },
+                { name: "PBKDF2", salt, iterations: iterations, hash: "SHA-256" },
                 keyMaterial,
                 { name: "AES-GCM", length: 256 },
                 false,
@@ -246,50 +250,68 @@
 
         /* 加密 */
         async function encryptText() {
-            setBtuDisabled(true);
+            setBtnDisabled(true);
             const password = passwordEl.value.trim();
             const passwordConfirm = passwordConfirmEl.value.trim();
             const plaintext = inputEl.value.trim();
 
             if (!password || !passwordConfirm || !plaintext) {
-               setBtuDisabled(false);
+                setBtnDisabled(false);
                 return showToast("请输入口令和内容", "info");
             }
 
             if (password !== passwordConfirm) {
-                setBtuDisabled(false);
+                setBtnDisabled(false);
                 return showToast("口令不一致，请重新输入", "error");
             }
 
-            const salt = crypto.getRandomValues(new Uint8Array(16));
-            const iv = crypto.getRandomValues(new Uint8Array(12));
-            const key = await deriveKey(password, salt);
-
+            const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
+            const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
+            const key = await deriveKey(password, salt, ITERATIONS);
             const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
-            const result = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
-            result.set(salt, 0);
-            result.set(iv, salt.length);
-            result.set(new Uint8Array(ciphertext), salt.length + iv.length);
+
+            const header = new ArrayBuffer(4);
+            new DataView(header).setUint32(0, ITERATIONS, false); // big-endian
+            const result = new Uint8Array(
+                4 + SALT_LEN + IV_LEN + ciphertext.byteLength
+            );
+            let offset = 0;
+            result.set(new Uint8Array(header), offset);
+            offset += 4;
+            result.set(salt, offset);
+            offset += SALT_LEN;
+            result.set(iv, offset);
+            offset += IV_LEN;
+            result.set(new Uint8Array(ciphertext), offset);
 
             outputEl.value = toBase64(result);
-            setBtuDisabled(false);
+            setBtnDisabled(false);
             showToast("加密完成", "success");
         }
 
         /* 解密 */
         async function decryptText() {
-            setBtuDisabled(true);
+            setBtnDisabled(true);
             const password = passwordEl.value.trim();
             const data = inputEl.value.trim();
-            if (!password || !data) return showToast("请输入口令和内容", "info");
+
+            if (!password || !data) {
+                setBtnDisabled(false);
+                return showToast("请输入口令和内容", "info");
+            }
 
             try {
                 const raw = fromBase64(data);
-                const salt = raw.slice(0, 16);
-                const iv = raw.slice(16, 28);
-                const ciphertext = raw.slice(28);
+                let offset = 0;
+                const iterations = new DataView(raw.buffer).getUint32(0, false);
+                offset += 4;
+                const salt = raw.slice(offset, offset + SALT_LEN);
+                offset += SALT_LEN;
+                const iv = raw.slice(offset, offset + IV_LEN);
+                offset += IV_LEN;
+                const ciphertext = raw.slice(offset);
 
-                const key = await deriveKey(password, salt);
+                const key = await deriveKey(password, salt, iterations);
                 const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
 
                 outputEl.value = decoder.decode(plaintext);
@@ -298,7 +320,7 @@
                 showToast("解密失败：口令错误或数据被篡改", "error");
                 outputEl.value = '';
             }
-            setBtuDisabled(false);
+            setBtnDisabled(false);
         }
     </script>
 </body>
