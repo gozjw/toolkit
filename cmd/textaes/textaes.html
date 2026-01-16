@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-    <title>文本加解密</title>
+    <title>密码工具</title>
     <link rel="icon" href="data:image/x-icon;base64,
 AAABAAEAMDAAAAEAIAA2BgAAFgAAAIlQTkcNChoKAAAADUlIRFIAAAAwAAAAMAgGAAAAVwL5hwAA
 Bf1JREFUeJzcWd1vVMcV/52Zu7t37QVDW0PVIlUVLiDTVqUSVQVVLbBMQYLSqrCl5aVS/4QW2kpI
@@ -82,10 +82,68 @@ w34DZwAAAABJRU5ErkJggg==" />
             box-shadow: 0 6px 20px rgba(0, 0, 0, .06);
         }
 
-        h1 {
-            font-size: 1.25rem;
-            margin-bottom: 12px;
-            text-align: center;
+        .tab-dropdown {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .tab-dropdown-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+        }
+
+        .tab-arrow {
+            margin-left: 8px;
+            font-size: 0.8rem;
+        }
+
+        .tab-dropdown-list {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            list-style: none;
+            margin: 4px 0 0 0;
+            padding: 0;
+            display: none;
+            z-index: 10;
+        }
+
+        .tab-dropdown-list li {
+            padding: 12px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .tab-dropdown-list li:hover {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-dropdown-list li.active {
+            color: var(--primary);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         label {
@@ -120,7 +178,8 @@ w34DZwAAAABJRU5ErkJggg==" />
             word-break: break-all;
         }
 
-        #output {
+        #output,
+        #generatedPwd {
             font-family: "Courier New", Courier, monospace;
             letter-spacing: 0.5px;
         }
@@ -159,7 +218,6 @@ w34DZwAAAABJRU5ErkJggg==" />
             margin-top: 14px;
         }
 
-        /* ===== 头部 Toast 消息样式 ===== */
         .toast {
             position: fixed;
             top: calc(0px + env(safe-area-inset-top));
@@ -200,57 +258,64 @@ w34DZwAAAABJRU5ErkJggg==" />
 <body>
     <div class="container">
         <div class="card">
-            <h1>🔐 文本加解密</h1>
-
-            <label>口令</label>
-            <input id="password" type="password" placeholder="请输入口令">
-
-            <label>确认口令（加密必填）</label>
-            <input id="passwordConfirm" type="password" placeholder="请再次输入口令">
-
-            <label>明文 / 密文（双击全选）</label>
-            <textarea id="input" placeholder="在此输入要加密或解密的内容..."></textarea>
-
-            <div class="buttons">
-                <button id="encodeBtn" class="encrypt" onclick="encryptText()">加密</button>
-                <button id="decodeBtn" class="decrypt" onclick="decryptText()">解密</button>
-                <button id="clearBtn" class="decrypt" onclick="clearOutput()">清空</button>
+            <!-- 下拉式选项卡 -->
+            <div class="tab-dropdown">
+                <button class="tab-dropdown-btn" id="tabBtn">
+                    <span class="tab-text">文本加解密</span>
+                    <span class="tab-arrow">▼</span>
+                </button>
+                <ul class="tab-dropdown-list" id="tabList">
+                    <li data-tab="crypto" class="active">文本加解密</li>
+                    <li data-tab="password">随机密码</li>
+                </ul>
             </div>
 
-            <label>结果（双击全选）</label>
-            <textarea id="output" readonly></textarea>
+            <!-- 文本加解密 -->
+            <div id="tab-crypto" class="tab-content active">
+                <label for="password">口令</label>
+                <input id="password" type="password" placeholder="请输入口令">
 
-            <footer>PBKDF2 · AES-256 · 本地加密</footer>
+                <label for="passwordConfirm">确认口令（加密必填）</label>
+                <input id="passwordConfirm" type="password" placeholder="请再次输入口令">
+
+                <label for="input">明文 / 密文（双击全选）</label>
+                <textarea id="input" placeholder="在此输入要加密或解密的内容..."></textarea>
+
+                <div class="buttons">
+                    <button id="encodeBtn" class="encrypt" onclick="encryptText()">加密</button>
+                    <button id="decodeBtn" class="decrypt" onclick="decryptText()">解密</button>
+                    <button id="clearBtn" class="decrypt" onclick="clearOutput()">清空</button>
+                </div>
+
+                <label for="output">结果（双击全选）</label>
+                <textarea id="output" readonly></textarea>
+            </div>
+
+            <!-- 随机密码生成 -->
+            <div id="tab-password" class="tab-content">
+                <label for="pwdLength">密码长度</label>
+                <input id="pwdLength" type="number" min="6" max="64" value="16">
+
+                <label><input type="checkbox" id="useUpper" checked> 包含大写字母</label>
+                <label><input type="checkbox" id="useLower" checked> 包含小写字母</label>
+                <label><input type="checkbox" id="useNumber" checked> 包含数字</label>
+                <label><input type="checkbox" id="useSymbol" checked> 包含符号</label>
+                <div class="buttons">
+                    <button class="encrypt" onclick="generatePassword()">生成密码</button>
+                    <button class="decrypt" onclick="clearGeneratedPwd()">清空</button>
+                </div>
+
+                <label for="generatedPwd">生成结果（双击全选）</label>
+                <textarea id="generatedPwd" readonly></textarea>
+            </div>
         </div>
     </div>
 
-    <!-- 头部 Toast -->
     <div id="toast" class="toast"></div>
 
     <script>
-        const ITERATIONS = 500000;
-        const SALT_LEN = 16;
-        const IV_LEN = 12;
-
-        const encoder = new TextEncoder();
-        const decoder = new TextDecoder();
-        const encodeBtn = document.getElementById("encodeBtn");
-        const decodeBtn = document.getElementById("decodeBtn");
-        const passwordEl = document.getElementById("password");
-        const passwordConfirmEl = document.getElementById("passwordConfirm");
-        const inputEl = document.getElementById("input");
-        const outputEl = document.getElementById("output");
+        // 弹出信息
         let toastTimer;
-
-        /* 双击明文框全选 */
-        inputEl.addEventListener('dblclick', () => inputEl.select());
-        outputEl.addEventListener('dblclick', () => outputEl.select());
-
-        /* Base64 工具 */
-        function toBase64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
-        function fromBase64(str) { return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
-
-        /* 头部 Toast 显示 */
         function showToast(message, type = "info") {
             const toast = document.getElementById("toast");
             toast.textContent = message;
@@ -259,19 +324,62 @@ w34DZwAAAABJRU5ErkJggg==" />
             toastTimer = setTimeout(() => { toast.classList.remove("show"); }, 2000);
         }
 
-        // 按钮置灰
+        // 下拉式选项卡
+        const tabBtn = document.getElementById('tabBtn');
+        const tabList = document.getElementById('tabList');
+
+        tabBtn.addEventListener('click', () => {
+            tabList.style.display = tabList.style.display === 'block' ? 'none' : 'block';
+        });
+
+        tabList.querySelectorAll('li').forEach(li => {
+            li.addEventListener('click', () => {
+                tabList.querySelectorAll('li').forEach(i => i.classList.remove('active'));
+                li.classList.add('active');
+
+                tabBtn.querySelector('.tab-text').textContent = li.textContent;
+
+                document.querySelectorAll('.tab-content').forEach(c => {
+                    c.classList.toggle('active', c.id === `tab-${li.dataset.tab}`);
+                });
+
+                tabList.style.display = 'none';
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!tabBtn.contains(e.target) && !tabList.contains(e.target)) {
+                tabList.style.display = 'none';
+            }
+        });
+
+        // 加解密逻辑 
+        const ITERATIONS = 500000, SALT_LEN = 16, IV_LEN = 12;
+        const encoder = new TextEncoder(), decoder = new TextDecoder();
+        const encodeBtn = document.getElementById("encodeBtn");
+        const decodeBtn = document.getElementById("decodeBtn");
+        const passwordEl = document.getElementById("password");
+        const passwordConfirmEl = document.getElementById("passwordConfirm");
+        const inputEl = document.getElementById("input");
+        const outputEl = document.getElementById("output");
+
+        inputEl.addEventListener('dblclick', () => inputEl.select());
+        outputEl.addEventListener('dblclick', () => outputEl.select());
+
+        function toBase64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
+        function fromBase64(str) { return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
+
         function setBtnDisabled(v) {
             encodeBtn.disabled = v;
             decodeBtn.disabled = v;
         }
 
-        /* PBKDF2 派生 AES-256 密钥 */
         async function deriveKey(password, salt, iterations) {
             const keyMaterial = await crypto.subtle.importKey(
                 "raw", encoder.encode(password), "PBKDF2", false, ["deriveKey"]
             );
             return crypto.subtle.deriveKey(
-                { name: "PBKDF2", salt, iterations: iterations, hash: "SHA-256" },
+                { name: "PBKDF2", salt, iterations, hash: "SHA-256" },
                 keyMaterial,
                 { name: "AES-GCM", length: 256 },
                 false,
@@ -279,7 +387,6 @@ w34DZwAAAABJRU5ErkJggg==" />
             );
         }
 
-        /* 加密 */
         async function encryptText() {
             setBtnDisabled(true);
             const password = passwordEl.value.trim();
@@ -299,20 +406,19 @@ w34DZwAAAABJRU5ErkJggg==" />
             const salt = crypto.getRandomValues(new Uint8Array(SALT_LEN));
             const iv = crypto.getRandomValues(new Uint8Array(IV_LEN));
             const key = await deriveKey(password, salt, ITERATIONS);
-            const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoder.encode(plaintext));
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv },
+                key,
+                encoder.encode(plaintext)
+            );
 
             const header = new ArrayBuffer(4);
-            new DataView(header).setUint32(0, ITERATIONS, false); // big-endian
-            const result = new Uint8Array(
-                4 + SALT_LEN + IV_LEN + ciphertext.byteLength
-            );
+            new DataView(header).setUint32(0, ITERATIONS, false);
+            const result = new Uint8Array(4 + SALT_LEN + IV_LEN + ciphertext.byteLength);
             let offset = 0;
-            result.set(new Uint8Array(header), offset);
-            offset += 4;
-            result.set(salt, offset);
-            offset += SALT_LEN;
-            result.set(iv, offset);
-            offset += IV_LEN;
+            result.set(new Uint8Array(header), offset); offset += 4;
+            result.set(salt, offset); offset += SALT_LEN;
+            result.set(iv, offset); offset += IV_LEN;
             result.set(new Uint8Array(ciphertext), offset);
 
             outputEl.value = toBase64(result);
@@ -320,7 +426,6 @@ w34DZwAAAABJRU5ErkJggg==" />
             showToast("加密完成", "success");
         }
 
-        /* 解密 */
         async function decryptText() {
             setBtnDisabled(true);
             const password = passwordEl.value.trim();
@@ -333,18 +438,13 @@ w34DZwAAAABJRU5ErkJggg==" />
 
             try {
                 const raw = fromBase64(data);
-                let offset = 0;
                 const iterations = new DataView(raw.buffer).getUint32(0, false);
-                offset += 4;
-                const salt = raw.slice(offset, offset + SALT_LEN);
-                offset += SALT_LEN;
-                const iv = raw.slice(offset, offset + IV_LEN);
-                offset += IV_LEN;
+                let offset = 4;
+                const salt = raw.slice(offset, offset + SALT_LEN); offset += SALT_LEN;
+                const iv = raw.slice(offset, offset + IV_LEN); offset += IV_LEN;
                 const ciphertext = raw.slice(offset);
-
                 const key = await deriveKey(password, salt, iterations);
                 const plaintext = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ciphertext);
-
                 outputEl.value = decoder.decode(plaintext);
                 showToast("解密成功", "success");
             } catch {
@@ -354,10 +454,38 @@ w34DZwAAAABJRU5ErkJggg==" />
             setBtnDisabled(false);
         }
 
-        // 清空输出
-        function clearOutput() {
-            outputEl.value = '';
+        function clearOutput() { outputEl.value = ''; }
+
+        // 随机密码生成
+        const useUpper = document.getElementById("useUpper");
+        const useLower = document.getElementById("useLower");
+        const useNumber = document.getElementById("useNumber");
+        const useSymbol = document.getElementById("useSymbol");
+        const generatedPwd = document.getElementById("generatedPwd");
+
+        function generatePassword() {
+            const length = parseInt(document.getElementById('pwdLength').value);
+            const sets = [];
+            if (useUpper.checked) sets.push("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
+            if (useLower.checked) sets.push("abcdefghijklmnopqrstuvwxyz");
+            if (useNumber.checked) sets.push("0123456789");
+            if (useSymbol.checked) sets.push("!@#$%^&*()-_=+[]{}");
+
+            if (!sets.length) return showToast("至少选择一种字符类型", "error");
+
+            const allChars = sets.join('');
+            const values = crypto.getRandomValues(new Uint32Array(length));
+            let result = '';
+            for (let i = 0; i < length; i++) {
+                result += allChars[values[i] % allChars.length];
+            }
+            generatedPwd.value = result;
+            showToast("密码已生成", "success");
         }
+
+        function clearGeneratedPwd() { generatedPwd.value = ''; }
+
+        generatedPwd.addEventListener('dblclick', e => e.target.select());
     </script>
 </body>
 
