@@ -214,12 +214,13 @@ w34DZwAAAABJRU5ErkJggg==" />
             <div class="buttons">
                 <button id="encodeBtn" class="encrypt" onclick="encryptText()">加密</button>
                 <button id="decodeBtn" class="decrypt" onclick="decryptText()">解密</button>
+                <button id="clearBtn" class="decrypt" onclick="clearOutput()">清空</button>
             </div>
 
             <label>结果（双击全选）</label>
             <textarea id="output" readonly></textarea>
 
-            <footer>本地加密</footer>
+            <footer>PBKDF2 · AES-256 · 本地加密</footer>
         </div>
     </div>
 
@@ -351,6 +352,11 @@ w34DZwAAAABJRU5ErkJggg==" />
                 outputEl.value = '';
             }
             setBtnDisabled(false);
+        }
+
+        // 清空输出
+        function clearOutput() {
+            outputEl.value = '';
         }
     </script>
 </body>
