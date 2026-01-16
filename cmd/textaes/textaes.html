@@ -218,6 +218,30 @@ w34DZwAAAABJRU5ErkJggg==" />
             margin-top: 14px;
         }
 
+        .check-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+            padding: 10px 14px;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background: var(--card);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.9rem;
+        }
+
+        .check-row input[type="checkbox"] {
+            width: 15px;
+            cursor: pointer;
+            accent-color: var(--primary);
+        }
+
+        .check-row span {
+            user-select: none;
+        }
+
         .toast {
             position: fixed;
             top: calc(0px + env(safe-area-inset-top));
@@ -289,7 +313,7 @@ w34DZwAAAABJRU5ErkJggg==" />
 
                 <label for="output">结果（双击全选）</label>
                 <textarea id="output" readonly></textarea>
-                
+
                 <footer>PBKDF2 · AES-256 · 本地加密</footer>
             </div>
 
@@ -298,10 +322,23 @@ w34DZwAAAABJRU5ErkJggg==" />
                 <label for="pwdLength">密码长度</label>
                 <input id="pwdLength" type="number" min="6" max="64" value="16">
 
-                <label><input type="checkbox" id="useUpper" checked> 包含大写字母</label>
-                <label><input type="checkbox" id="useLower" checked> 包含小写字母</label>
-                <label><input type="checkbox" id="useNumber" checked> 包含数字</label>
-                <label><input type="checkbox" id="useSymbol" checked> 包含符号</label>
+                <label class="check-row">
+                    <span>包含大写字母</span>
+                    <input type="checkbox" id="useUpper" checked>
+                </label>
+                <label class="check-row">
+                    <span>包含小写字母</span>
+                    <input type="checkbox" id="useLower" checked>
+                </label>
+                <label class="check-row">
+                    <span>包含数字</span>
+                    <input type="checkbox" id="useNumber" checked>
+                </label>
+                <label class="check-row">
+                    <span>包含特殊符号</span>
+                    <input type="checkbox" id="useSymbol" checked>
+                </label>
+
                 <div class="buttons">
                     <button class="encrypt" onclick="generatePassword()">生成密码</button>
                     <button class="decrypt" onclick="clearGeneratedPwd()">清空</button>
