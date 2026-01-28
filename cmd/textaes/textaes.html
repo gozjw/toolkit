@@ -231,28 +231,48 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
             margin-top: 14px;
         }
 
-        .check-row {
-            display: flex;
+        .slider-row {
+            display: grid;
+            grid-template-columns: 90px 1fr 40px;
             align-items: center;
-            justify-content: space-between;
-            margin-top: 10px;
-            padding: 10px 14px;
+            gap: 12px;
+            padding: 8px 12px;
+            border-radius: 14px;
             border: 1px solid var(--border);
-            border-radius: 12px;
-            background: var(--card);
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.9rem;
+            margin-top: 12px;
+            background: linear-gradient(180deg,
+                    rgba(0, 0, 0, .02),
+                    rgba(0, 0, 0, 0));
         }
 
-        .check-row input[type="checkbox"] {
-            width: 15px;
-            cursor: pointer;
-            accent-color: var(--primary);
+        .slider-label {
+            font-size: .85rem;
+            color: var(--muted);
+            white-space: nowrap;
         }
 
-        .check-row span {
-            user-select: none;
+        .slider-value {
+            text-align: right;
+            font-weight: 600;
+            font-size: .85rem;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 6px;
+            border-radius: 6px;
+            background: var(--border);
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
         }
 
         .toast {
@@ -321,7 +341,7 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
                 <div class="buttons">
                     <button id="encodeBtn" class="encrypt" onclick="encryptText()">加密</button>
                     <button id="decodeBtn" class="decrypt" onclick="decryptText()">解密</button>
-                    <button id="clearBtn" class="decrypt" onclick="clearOutput()">清空</button>
+                    <button id="clearBtn" class="decrypt" onclick="outputEl.value=''">清空</button>
                 </div>
 
                 <label for="output">结果（双击全选）</label>
@@ -332,29 +352,40 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
 
             <!-- 随机密码生成 -->
             <div id="tab-password" class="tab-content">
-                <label for="pwdLength">密码长度</label>
-                <input id="pwdLength" type="number" min="6" max="64" value="16">
 
-                <label class="check-row">
-                    <span>包含大写字母</span>
-                    <input type="checkbox" id="useUpper" checked>
-                </label>
-                <label class="check-row">
-                    <span>包含小写字母</span>
-                    <input type="checkbox" id="useLower" checked>
-                </label>
-                <label class="check-row">
-                    <span>包含数字</span>
-                    <input type="checkbox" id="useNumber" checked>
-                </label>
-                <label class="check-row">
-                    <span>包含特殊符号</span>
-                    <input type="checkbox" id="useSymbol" checked>
-                </label>
+                <div class="slider-row">
+                    <div class="slider-label">密码长度</div>
+                    <input id="pwdLength" type="range" min="4" max="24" value="16">
+                    <div class="slider-value" id="lenVal">16</div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-label">包含大写字母</div>
+                    <input id="upperWeight" type="range" min="0" max="10" value="5">
+                    <div class="slider-value" id="upperVal">5</div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-label">包含小写字母</div>
+                    <input id="lowerWeight" type="range" min="0" max="10" value="5">
+                    <div class="slider-value" id="lowerVal">5</div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-label">包含数字</div>
+                    <input id="numberWeight" type="range" min="0" max="10" value="5">
+                    <div class="slider-value" id="numberVal">5</div>
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-label">包含特殊符号</div>
+                    <input id="symbolWeight" type="range" min="0" max="10" value="5">
+                    <div class="slider-value" id="symbolVal">5</div>
+                </div>
 
                 <div class="buttons">
-                    <button class="encrypt" onclick="generatePassword()">生成密码</button>
-                    <button class="decrypt" onclick="clearGeneratedPwd()">清空</button>
+                    <button class="encrypt" onclick="generatePassword()">生成</button>
+                    <button class="decrypt" onclick="generatedPwd.value=''">清空</button>
                 </div>
 
                 <label for="generatedPwd">生成结果（双击全选）</label>
@@ -366,10 +397,12 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
     <div id="toast" class="toast"></div>
 
     <script>
+        const $ = id => document.getElementById(id);
+
         // 弹出信息
         let toastTimer;
         function showToast(message, type = "info") {
-            const toast = document.getElementById("toast");
+            const toast = $("toast");
             toast.textContent = message;
             toast.className = `toast ${type} show`;
             clearTimeout(toastTimer);
@@ -377,8 +410,8 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
         }
 
         // 下拉式选项卡
-        const tabBtn = document.getElementById('tabBtn');
-        const tabList = document.getElementById('tabList');
+        const tabBtn = $('tabBtn');
+        const tabList = $('tabList');
 
         tabBtn.addEventListener('click', () => {
             tabList.style.display = tabList.style.display === 'block' ? 'none' : 'block';
@@ -408,15 +441,15 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
         // 加解密逻辑 
         const ITERATIONS = 500000, SALT_LEN = 16, IV_LEN = 12;
         const encoder = new TextEncoder(), decoder = new TextDecoder();
-        const encodeBtn = document.getElementById("encodeBtn");
-        const decodeBtn = document.getElementById("decodeBtn");
-        const passwordEl = document.getElementById("password");
-        const passwordConfirmEl = document.getElementById("passwordConfirm");
-        const inputEl = document.getElementById("input");
-        const outputEl = document.getElementById("output");
+        const encodeBtn = $("encodeBtn");
+        const decodeBtn = $("decodeBtn");
+        const passwordEl = $("password");
+        const passwordConfirmEl = $("passwordConfirm");
+        const inputEl = $("input");
+        const outputEl = $("output");
 
-        inputEl.addEventListener('dblclick', () => inputEl.select());
-        outputEl.addEventListener('dblclick', () => outputEl.select());
+        inputEl.ondblclick = e => e.target.select();
+        outputEl.ondblclick = e => e.target.select();
 
         function toBase64(buf) { return btoa(String.fromCharCode(...new Uint8Array(buf))); }
         function fromBase64(str) { return Uint8Array.from(atob(str), c => c.charCodeAt(0)); }
@@ -506,38 +539,67 @@ R0v0+G/GzI1oGeH/BLRagVZj1hPwnwAAAP//uOqsiljHjXEAAAAASUVORK5CYII=" />
             setBtnDisabled(false);
         }
 
-        function clearOutput() { outputEl.value = ''; }
-
         // 随机密码生成
-        const useUpper = document.getElementById("useUpper");
-        const useLower = document.getElementById("useLower");
-        const useNumber = document.getElementById("useNumber");
-        const useSymbol = document.getElementById("useSymbol");
-        const generatedPwd = document.getElementById("generatedPwd");
+        function bindRange(id, valId) {
+            const el = $(id), val = $(valId);
+            val.textContent = el.value;
+            el.oninput = () => val.textContent = el.value;
+        }
+
+        bindRange("pwdLength", "lenVal");
+        bindRange("upperWeight", "upperVal");
+        bindRange("lowerWeight", "lowerVal");
+        bindRange("numberWeight", "numberVal");
+        bindRange("symbolWeight", "symbolVal");
+
+        // 随机整数 [0, max)
+        function randomInt(max) {
+            const range = 0x100000000;
+            const limit = range - (range % max);
+            let x;
+            do {
+                x = crypto.getRandomValues(new Uint32Array(1))[0];
+            } while (x >= limit);
+            return x % max;
+        }
 
         function generatePassword() {
-            const length = parseInt(document.getElementById('pwdLength').value);
-            const sets = [];
-            if (useUpper.checked) sets.push("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
-            if (useLower.checked) sets.push("abcdefghijklmnopqrstuvwxyz");
-            if (useNumber.checked) sets.push("0123456789");
-            if (useSymbol.checked) sets.push("!@#$%^&*()-_=+[]{}");
+            const length = +$("pwdLength").value;
 
-            if (!sets.length) return showToast("至少选择一种字符类型", "error");
+            const groups = [
+                { chars: "ABCDEFGHIJKLMNOPQRSTUVWXYZ", weight: +$("upperWeight").value },
+                { chars: "abcdefghijklmnopqrstuvwxyz", weight: +$("lowerWeight").value },
+                { chars: "0123456789", weight: +$("numberWeight").value },
+                { chars: "!@#$%^&*()-_=+[]{}", weight: +$("symbolWeight").value }
+            ].filter(g => g.weight > 0);
 
-            const allChars = sets.join('');
-            const values = crypto.getRandomValues(new Uint32Array(length));
-            let result = '';
-            for (let i = 0; i < length; i++) {
-                result += allChars[values[i] % allChars.length];
+            if (!groups.length) {
+                return showToast("至少包含一种字符", "error");
             }
-            generatedPwd.value = result;
+
+            let total = 0;
+            for (let g of groups) {
+                g.weightMin = total;
+                total += g.weight;
+                g.weightMax = total;
+            }
+
+            let pwd = "";
+            for (let i = 0; i < length; i++) {
+                let r = randomInt(total);
+                for (let g of groups) {
+                    if (g.weightMin <= r && r < g.weightMax) {
+                        pwd += g.chars[randomInt(g.chars.length)];
+                        break;
+                    }
+                }
+            }
+
+            $("generatedPwd").value = pwd;
             showToast("密码已生成", "success");
         }
 
-        function clearGeneratedPwd() { generatedPwd.value = ''; }
-
-        generatedPwd.addEventListener('dblclick', e => e.target.select());
+        $("generatedPwd").ondblclick = e => e.target.select();
     </script>
 </body>
 
