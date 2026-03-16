@@ -5,6 +5,7 @@ import (
 	"context"
 	_ "embed"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -164,7 +165,7 @@ func deleteHandler(c *Ctx) {
 		}
 	} else {
 		err = os.Remove(filepath.Join(workDir, fileName))
-		if err != nil {
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err)
 			return
 		}
