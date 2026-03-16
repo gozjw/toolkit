@@ -34,6 +34,7 @@ var iconETag string
 
 var serverName = "文件共享"
 var hostName string
+var execPath string
 var workDir string
 var useTrash bool
 var port int64
@@ -44,6 +45,7 @@ var textMux sync.RWMutex
 
 func main() {
 	hostName, _ = os.Hostname()
+	execPath, _ = os.Executable()
 
 	flag.StringVar(&workDir, "d", workDir, "工作目录")
 	flag.BoolVar(&useTrash, "t", false, "删除时放入回收站")
@@ -148,13 +150,13 @@ func getTextHandler(c *Ctx) {
 
 func deleteHandler(c *Ctx) {
 	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/"))
-	c.Log.Print(fileName)
 	if err != nil || strings.Contains(fileName, "/") {
 		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err)
 		return
 	}
-
+	var msg = "删除"
 	if useTrash {
+		msg = "移除"
 		err = trash.Throw(filepath.Join(workDir, fileName))
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err)
@@ -167,8 +169,8 @@ func deleteHandler(c *Ctx) {
 			return
 		}
 	}
-
-	c.W.Write([]byte("删除成功"))
+	c.Log.Print(msg, fileName)
+	c.W.Write([]byte(msg + "成功"))
 }
 
 func indexHandler(c *Ctx) {
@@ -183,9 +185,14 @@ func indexHandler(c *Ctx) {
 }
 
 func listHandler(c *Ctx) {
-	d, err := json.Marshal(getFiles())
+	list, err := getFiles()
 	if err != nil {
-		writeErrorRsp(c, http.StatusInternalServerError, "获取文件列表失败", err)
+		writeErrorRsp(c, http.StatusInternalServerError, "获取文件失败", err)
+		return
+	}
+	d, err := json.Marshal(list)
+	if err != nil {
+		writeErrorRsp(c, http.StatusInternalServerError, "列表格式化失败", err)
 		return
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -359,19 +366,22 @@ type entryInfo struct {
 	mod  time.Time
 }
 
-func getFiles() (files []string) {
-	fs, _ := os.ReadDir(workDir)
+func getFiles() (files []string, err error) {
+	files = make([]string, 0)
+
+	fs, err := os.ReadDir(workDir)
+	if err != nil {
+		return files, err
+	}
 
 	var list []entryInfo
-	exeName := filepath.Base(os.Args[0])
-
 	for _, e := range fs {
-		name := e.Name()
-		if name == exeName ||
-			strings.HasSuffix(name, tmpSuffix) {
+		if e.IsDir() {
 			continue
 		}
-		if e.IsDir() {
+		name := e.Name()
+		if strings.HasSuffix(name, tmpSuffix) ||
+			filepath.Join(workDir, name) == execPath {
 			continue
 		}
 		info, err := e.Info()
@@ -385,7 +395,6 @@ func getFiles() (files []string) {
 		return list[i].mod.After(list[j].mod)
 	})
 
-	files = make([]string, 0, len(list))
 	for _, it := range list {
 		files = append(files, it.name)
 	}

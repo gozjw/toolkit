@@ -190,8 +190,12 @@
 
         function getFilelist() {
             fetch("/list")
-                .then(res => res.json())
-                .then(list => {
+                .then(res => {
+                    if (!res.ok) {
+                        return res.text().then(t => { throw new Error(t); });
+                    }
+                    return res.json();
+                }).then(list => {
                     const fl = $("fileList");
                     fl.innerHTML = "";
                     list.forEach((fname, idx) => {
@@ -210,6 +214,8 @@
                         fl.appendChild(tr);
                     });
                     autoIndex();
+                }).catch(err => {
+                    showToast(err);
                 });
         }
 
@@ -225,10 +231,12 @@
                 method: "DELETE"
             }).then(res => {
                 if (!res.ok) {
-                    return res.text().then(t => showToast("删除失败：" + t));
+                    return res.text().then(t => { throw new Error(t); });
                 }
                 row.remove();
                 autoIndex();
+            }).catch(err => {
+                showToast(err);
             });
         }
 
@@ -301,11 +309,14 @@
 
         function receText() {
             fetch("/text",)
-                .then(response => response.text())
-                .then(result => {
+                .then(res => {
+                    if (!res.ok) {
+                        return res.text().then(t => { throw new Error(t); });
+                    }
+                    return response.text();
+                }).then(result => {
                     $("textArea").value = result;
-                })
-                .catch(err => {
+                }).catch(err => {
                     showToast(err);
                 })
         }
@@ -325,14 +336,14 @@
                     "Content-Type": "application/plain; charset=utf-8"
                 },
                 body: value
+            }).then(res => {
+                if (!res.ok) {
+                    return res.text().then(t => { throw new Error(t); });
+                }
+                showToast("发送成功");
+            }).catch(err => {
+                showToast(err);
             })
-                .then(response => response.text())
-                .then(result => {
-                    showToast("发送成功");
-                })
-                .catch(err => {
-                    showToast(err);
-                })
         }
 
         function showToast(msg) {
