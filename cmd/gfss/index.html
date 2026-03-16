@@ -313,7 +313,7 @@
                     if (!res.ok) {
                         return res.text().then(t => { throw new Error(t); });
                     }
-                    return response.text();
+                    return res.text();
                 }).then(result => {
                     $("textArea").value = result;
                 }).catch(err => {
