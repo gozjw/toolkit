@@ -42,7 +42,7 @@ var port int64
 var tmpSuffix = ".tmp"
 
 var text bytes.Buffer
-var textMux sync.RWMutex
+var reqMux sync.RWMutex
 
 func main() {
 	hostName, _ = os.Hostname()
@@ -126,8 +126,8 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func postTextHandler(c *Ctx) {
-	textMux.Lock()
-	defer textMux.Unlock()
+	reqMux.Lock()
+	defer reqMux.Unlock()
 	text.Reset()
 	_, err := text.ReadFrom(c.R.Body)
 	if err != nil {
@@ -142,14 +142,16 @@ func postTextHandler(c *Ctx) {
 }
 
 func getTextHandler(c *Ctx) {
-	textMux.RLock()
-	defer textMux.RUnlock()
+	reqMux.RLock()
+	defer reqMux.RUnlock()
 	c.W.Header().Set("Content-Type", "application/plain; charset=utf-8")
 	c.W.WriteHeader(http.StatusOK)
 	c.W.Write(text.Bytes())
 }
 
 func deleteHandler(c *Ctx) {
+	reqMux.Lock()
+	defer reqMux.Unlock()
 	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/"))
 	if err != nil || strings.Contains(fileName, "/") {
 		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err)
