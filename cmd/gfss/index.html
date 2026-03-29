@@ -206,7 +206,7 @@
                             <a class="fname" href="/dl/${encodeURIComponent(fname)}">${fname}</a>
                         </td>
                         <td>
-                            <button>{{.UseTrash}}</button>
+                            <button>{{.TrashDesc}}</button>
                         </td>`;
                         const a = tr.querySelector("a.fname")
                         a.onclick = () => { a.style.color = "red"; };

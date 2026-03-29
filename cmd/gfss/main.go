@@ -37,7 +37,7 @@ var serverName = "文件共享"
 var hostName string
 var execPath string
 var workDir string
-var useTrash bool
+var noTrash bool
 var port int64
 var tmpSuffix = ".tmp"
 
@@ -49,7 +49,7 @@ func main() {
 	execPath, _ = os.Executable()
 
 	flag.StringVar(&workDir, "d", workDir, "工作目录")
-	flag.BoolVar(&useTrash, "t", false, "删除时放入回收站")
+	flag.BoolVar(&noTrash, "t", false, "不放入回收站")
 	flag.Int64Var(&port, "p", 9527, "端口号")
 	flag.Parse()
 
@@ -66,10 +66,10 @@ func main() {
 	indexHTMl = strings.ReplaceAll(indexHTMl, "{{.HostName}}", hostName)
 	indexHTMl = strings.ReplaceAll(indexHTMl, "{{.WorkDir}}", workDir)
 
-	if useTrash {
-		indexHTMl = strings.ReplaceAll(indexHTMl, "{{.UseTrash}}", "移除")
+	if noTrash {
+		indexHTMl = strings.ReplaceAll(indexHTMl, "{{.TrashDesc}}", "删除")
 	} else {
-		indexHTMl = strings.ReplaceAll(indexHTMl, "{{.UseTrash}}", "删除")
+		indexHTMl = strings.ReplaceAll(indexHTMl, "{{.TrashDesc}}", "移除")
 	}
 
 	indexETag = etag.Generate(indexHTMl, true)
@@ -79,7 +79,7 @@ func main() {
 	fmt.Printf("设备名称：%s\n", hostName)
 	fmt.Printf("工作目录：%s\n", workDir)
 	fmt.Printf("网页链接：http://%s:%d %s\n", ip, port, ipMsg)
-	fmt.Printf("放入回收站：%t\n", useTrash)
+	fmt.Printf("回收站：%t\n", !noTrash)
 	server := &http.Server{
 		Addr:        addr,
 		Handler:     &Engine{},
@@ -158,17 +158,17 @@ func deleteHandler(c *Ctx) {
 		return
 	}
 	var msg = "删除"
-	if useTrash {
+	if noTrash {
+		err = os.Remove(filepath.Join(workDir, fileName))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err)
+			return
+		}
+	} else {
 		msg = "移除"
 		err = trash.Throw(filepath.Join(workDir, fileName))
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err)
-			return
-		}
-	} else {
-		err = os.Remove(filepath.Join(workDir, fileName))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err)
 			return
 		}
 	}
