@@ -176,7 +176,7 @@
     <table id="fileTable">
         <thead>
             <tr>
-                <th>文件</th>
+                <th id="fileNameTr">文件</th>
                 <th>操作</th>
             </tr>
         </thead>
@@ -224,6 +224,11 @@
             rows.forEach((tr, i) => {
                 tr.querySelector("span.idx").textContent = (i + 1) + ". ";
             });
+            if (rows.length > 0) {
+                $("fileNameTr").textContent = "文件(" + rows.length + ")";
+            } else {
+                $("fileNameTr").textContent = "文件";
+            }
         }
 
         function deleteRow(row, fname) {
