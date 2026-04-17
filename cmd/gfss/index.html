@@ -239,6 +239,7 @@
                     return res.text().then(t => { throw new Error(t); });
                 }
                 row.remove();
+                showToast("删除成功");
                 autoIndex();
             }).catch(err => {
                 showToast(err);
