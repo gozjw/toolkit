@@ -157,21 +157,23 @@ func deleteHandler(c *Ctx) {
 		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err)
 		return
 	}
-	var msg = "删除"
+
+	var msg = "trash"
 	if noTrash {
+		msg = "del"
 		err = os.Remove(filepath.Join(workDir, fileName))
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err)
 			return
 		}
 	} else {
-		msg = "移除"
 		err = trash.Throw(filepath.Join(workDir, fileName))
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err)
 			return
 		}
 	}
+
 	c.Log.Print(msg, fileName)
 	c.W.Write([]byte(msg + "成功"))
 }
@@ -287,7 +289,9 @@ func uploadHandler(c *Ctx) {
 			return
 		}
 
-		saved = append(saved, filepath.Base(filePath))
+		fname = filepath.Base(filePath)
+		saved = append(saved, fname)
+		c.Log.Print(len(saved), fname)
 	}
 
 	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -296,7 +300,7 @@ func uploadHandler(c *Ctx) {
 		return
 	}
 
-	c.Log.Printf("use:%g len:%d %s", time.Since(now).Seconds(), len(saved), strings.Join(saved, ","))
+	c.Log.Printf("len:%d use:%gs", len(saved), time.Since(now).Seconds())
 
 	for _, n := range saved {
 		fmt.Fprintf(c.W, "%s\n", n)
