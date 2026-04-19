@@ -136,16 +136,13 @@ func postTextHandler(c *Ctx) {
 	}
 
 	c.Log.Print(text.Len())
-
 	c.W.Header().Set("Content-Type", "application/plain; charset=utf-8")
-	c.W.WriteHeader(http.StatusOK)
 }
 
 func getTextHandler(c *Ctx) {
 	reqMux.RLock()
 	defer reqMux.RUnlock()
 	c.W.Header().Set("Content-Type", "application/plain; charset=utf-8")
-	c.W.WriteHeader(http.StatusOK)
 	c.W.Write(text.Bytes())
 }
 
@@ -175,7 +172,6 @@ func deleteHandler(c *Ctx) {
 	}
 
 	c.Log.Print(msg, fileName)
-	c.W.Write([]byte(msg + "成功"))
 }
 
 func indexHandler(c *Ctx) {
@@ -185,7 +181,6 @@ func indexHandler(c *Ctx) {
 	}
 	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.W.Header().Set("ETag", indexETag)
-	c.W.WriteHeader(http.StatusOK)
 	c.W.Write([]byte(indexHTMl))
 }
 
@@ -201,7 +196,6 @@ func listHandler(c *Ctx) {
 		return
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	c.W.WriteHeader(http.StatusOK)
 	c.W.Write(d)
 }
 
@@ -301,11 +295,6 @@ func uploadHandler(c *Ctx) {
 	}
 
 	c.Log.Printf("len:%d use:%gs", len(saved), time.Since(now).Seconds())
-
-	for _, n := range saved {
-		fmt.Fprintf(c.W, "%s\n", n)
-	}
-	fmt.Fprintln(c.W, "上传完成")
 }
 
 func downloadHandler(c *Ctx) {
