@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -65,7 +66,14 @@ func main() {
 
 	indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.serverName}}"), []byte(serverName))
 	indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.HostName}}"), []byte(hostName))
-	indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.WorkDir}}"), []byte(workDir))
+
+	curUser, err := user.Current()
+	if err == nil && strings.Contains(workDir, curUser.HomeDir) {
+		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.WorkDir}}"),
+			[]byte(strings.ReplaceAll(workDir, curUser.HomeDir, "~")))
+	} else {
+		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.WorkDir}}"), []byte(workDir))
+	}
 
 	if noTrash {
 		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.TrashDesc}}"), []byte("删除"))
