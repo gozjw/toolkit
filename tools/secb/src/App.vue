@@ -1,8 +1,10 @@
 <template>
   <div class="form-container">
     <el-card class="form-card">
-      <el-switch class="theme-switch-wrapper" v-model="isDark" size="small" inline-prompt :active-icon="Moon"
-        :inactive-icon="Sunny" />
+      <div class="header-container">
+        <el-switch class="theme-switch-wrapper" v-model="isDark" size="small" inline-prompt :active-icon="Moon"
+          :inactive-icon="Sunny" />
+      </div>
       <el-form ref="formRef" :model="formData" :rules="rules" :hide-required-asterisk="true" label-position="top">
         <el-form-item label="文件" prop="fileName">
           <input class="hidden-input" ref="fileInputRef" type="file" accept=".secb" @change="handleFileChange" />
@@ -314,10 +316,15 @@ const readFileAsText = (file) => {
 </script>
 
 <style scoped>
-.theme-switch-wrapper {
+.header-container {
   display: flex;
   justify-content: flex-end;
   align-items: center;
+  width: 100%;
+}
+
+.theme-switch-wrapper {
+  width: fit-content;
 }
 
 .hidden-input {
