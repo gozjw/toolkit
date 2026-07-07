@@ -23,8 +23,8 @@
           <el-input v-model="plainText" type="textarea" :rows="6" placeholder="传输文本，双击全选..." clearable
             @dblclick="selectAllText" ref="textRef" />
           <div class="btn-group">
-            <el-button type="primary" @click="getText">接收</el-button>
-            <el-button type="success" @click="sendText">发送</el-button>
+            <el-button type="primary" :icon="Refresh" :loading="isRefreshing" @click="refresh">刷 新</el-button>
+            <el-button type="success" :icon="Upload" @click="sendText">发 送</el-button>
           </div>
         </div>
 
@@ -33,7 +33,8 @@
             <el-button type="warning">选择多文件</el-button>
           </el-upload>
 
-          <el-button type="danger" @click="submitUpload" :disabled="filesToUpload.length === 0 || isUploading">
+          <el-button type="danger" @click="submitUpload" :icon="UploadFilled"
+            :disabled="filesToUpload.length === 0 || isUploading">
             开始上传 {{ filesToUpload.length > 0 ? `(${filesToUpload.length}个文件)` : '' }}
           </el-button>
         </div>
@@ -74,10 +75,11 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useDark } from '@vueuse/core'
-import { Sunny, Moon } from '@element-plus/icons-vue'
+import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
 import axios from 'axios'
 
 const isDark = useDark({
+  initialValue: 'light',
   storage: {
     getItem: () => null,
     setItem: () => { },
@@ -91,6 +93,7 @@ const delDesc = ref('删除')
 
 const plainText = ref('')
 const textRef = ref(null)
+const isRefreshing = ref(false)
 
 const fileList = ref([])
 const clickedFiles = ref(new Set())
@@ -121,12 +124,20 @@ const fetchText = async () => {
   plainText.value = res.data || ''
 }
 
-const getText = async () => {
+const refresh = async () => {
+  if (isRefreshing.value) return
+
+  isRefreshing.value = true
   try {
-    await fetchText()
-    ElMessage.success('接收成功')
+    await Promise.all([
+      fetchInfo(),
+      fetchFileList(),
+      fetchText()
+    ])
   } catch (err) {
-    ElMessage.error('无法接收文本')
+    ElMessage.error('刷新失败，请检查网络')
+  } finally {
+    isRefreshing.value = false
   }
 }
 
@@ -148,14 +159,12 @@ const fetchFileList = async () => {
   }
 }
 
-// 拦截上传，收集多文件
 const beforeUpload = (file) => {
   filesToUpload.value.push(file)
   uploadProgresses.value[file.uid] = 0
   return false
 }
 
-// 计算真实的总体上传进度
 const totalProgress = computed(() => {
   const fileCount = filesToUpload.value.length
   if (fileCount === 0) return 0
@@ -163,7 +172,7 @@ const totalProgress = computed(() => {
   return Math.round(sum / fileCount)
 })
 
-// 5. 网络请求：并发上传多文件
+// 并发上传多文件
 const submitUpload = async () => {
   if (filesToUpload.value.length === 0) return
   isUploading.value = true
@@ -214,14 +223,12 @@ const handleDelete = async (filename) => {
     ElMessage.success(`${delDesc.value}: ${filename}`)
     fetchFileList()
   } catch (err) {
-    ElMessage.error(`${delDesc.value}失败`)
+    ElMessage.error(`${delDesc.value}失败: ${filename}`)
   }
 }
 
 onMounted(() => {
-  fetchInfo()
-  fetchFileList()
-  fetchText()
+  refresh()
 })
 </script>
 
