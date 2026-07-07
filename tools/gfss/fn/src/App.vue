@@ -47,7 +47,7 @@
       </div>
 
       <div class="right-panel">
-        <el-table :data="fileList" size="small" class="file-table" empty-text="无数据" border>
+        <el-table :data="fileList" size="small" class="file-table" empty-text="无文件" border>
           <el-table-column type="index" label="序号" width="50" align="center" />
           <el-table-column min-width="180">
             <template #header>
@@ -79,7 +79,7 @@ import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-
 import axios from 'axios'
 
 const isDark = useDark({
-  initialValue: 'light',
+  // initialValue: 'light',
   storage: {
     getItem: () => null,
     setItem: () => { },
