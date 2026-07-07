@@ -394,7 +394,7 @@ func download(c *Ctx) {
 		speed = int64(float64(total) / elapsed.Seconds())
 	}
 	c.Log.Printf(
-		"%s total:%s use:%v speed:%s/s",
+		"%s %s %v %s/s",
 		fileName,
 		utils.FormatBytesIEC(total),
 		elapsed.Round(time.Millisecond),
