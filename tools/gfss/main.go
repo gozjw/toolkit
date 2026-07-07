@@ -38,6 +38,7 @@ var serverName = "文件共享"
 var hostName string
 var execPath string
 var workDir string
+var showDir string
 var noTrash bool
 var port int64
 var tmpSuffix = ".tmp"
@@ -64,21 +65,11 @@ func main() {
 	addr := fmt.Sprintf(":%d", port)
 	ip, ipMsg := utils.GetIP()
 
-	indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.serverName}}"), []byte(serverName))
-	indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.HostName}}"), []byte(hostName))
-
 	curUser, err := user.Current()
 	if err == nil && strings.Contains(workDir, curUser.HomeDir) {
-		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.WorkDir}}"),
-			[]byte(strings.ReplaceAll(workDir, curUser.HomeDir, "~")))
+		showDir = strings.ReplaceAll(workDir, curUser.HomeDir, "~")
 	} else {
-		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.WorkDir}}"), []byte(workDir))
-	}
-
-	if noTrash {
-		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.TrashDesc}}"), []byte("删除"))
-	} else {
-		indexHTMl = bytes.ReplaceAll(indexHTMl, []byte("{{.TrashDesc}}"), []byte("移除"))
+		showDir = workDir
 	}
 
 	indexETag = etag.Generate(string(indexHTMl), true)
@@ -119,7 +110,10 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		if r.URL.Path == "/text" {
+		if r.URL.Path == "/info" {
+			info(c)
+			return
+		} else if r.URL.Path == "/text" {
 			text(c)
 			return
 		} else if r.URL.Path == "/list" {
@@ -146,6 +140,20 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	index(c)
+}
+
+func info(c *Ctx) {
+	var infos = make([]string, 3)
+	infos[0] = hostName
+	infos[1] = showDir
+	if noTrash {
+		infos[2] = "删除"
+	} else {
+		infos[2] = "移除"
+	}
+	d, _ := json.Marshal(infos)
+	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
+	c.W.Write(d)
 }
 
 func modText(c *Ctx) {
@@ -239,7 +247,7 @@ func upload(c *Ctx) {
 		return
 	}
 
-	var count int
+	var finalPath string
 	var total int64
 
 	for {
@@ -307,13 +315,12 @@ func upload(c *Ctx) {
 			return
 		}
 
-		count++
 		total += n
-		c.Log.Print(count, filepath.Base(filePath), utils.FormatBytesIEC(n))
+		finalPath = filepath.Base(filePath)
 	}
 
 	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if count == 0 {
+	if total == 0 {
 		writeErrorRsp(c, http.StatusBadRequest, "没有检测到文件上传", nil)
 		return
 	}
@@ -324,7 +331,8 @@ func upload(c *Ctx) {
 		speed = int64(float64(total) / elapsed.Seconds())
 	}
 	c.Log.Printf(
-		"total:%s use:%v speed:%s/s",
+		"%s %s %v %s/s",
+		finalPath,
 		utils.FormatBytesIEC(total),
 		elapsed.Round(time.Millisecond),
 		utils.FormatBytesIEC(speed),

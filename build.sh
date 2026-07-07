@@ -41,6 +41,13 @@ for dir in $TARGETS; do
     if [ -f "$dir/main.go" ]; then
         echo "构建：tools/$name ..."
 
+        if [ -f "$dir/fn/package.json" ]; then
+            cd $dir/fn
+            npm run build
+            cd $PROJ_DIR
+            cp -f $dir/fn/dist/index.html $dir/index.html
+        fi
+
         PNG_FILE="$dir/app.png"
         ICON_FILE="$dir/app.ico"
         SYZO_FILE="$dir/resource.syso"
