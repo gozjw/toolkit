@@ -143,17 +143,12 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func info(c *Ctx) {
-	var infos = make([]string, 3)
-	infos[0] = hostName
-	infos[1] = showDir
+	var infos = [3]string{hostName, showDir, "移除"}
 	if noTrash {
 		infos[2] = "删除"
-	} else {
-		infos[2] = "移除"
 	}
-	d, _ := json.Marshal(infos)
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	c.W.Write(d)
+	json.NewEncoder(c.W).Encode(infos)
 }
 
 func modText(c *Ctx) {
@@ -219,13 +214,8 @@ func list(c *Ctx) {
 		writeErrorRsp(c, http.StatusInternalServerError, "获取文件失败", err)
 		return
 	}
-	d, err := json.Marshal(list)
-	if err != nil {
-		writeErrorRsp(c, http.StatusInternalServerError, "列表格式化失败", err)
-		return
-	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	c.W.Write(d)
+	json.NewEncoder(c.W).Encode(list)
 }
 
 func favicon(c *Ctx) {
