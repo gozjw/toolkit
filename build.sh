@@ -45,7 +45,7 @@ for dir in "${TARGETS[@]}"; do
         EXE_FILE="$BUILD_DIR/${name}${SUFFIX}"
 
         if [ -f "$PNG_FILE" ] && [ -n "$SUFFIX" ]; then
-            png2ico -i "$PNG_FILE"
+            png2ico "$PNG_FILE"
             rsrc -ico "$ICON_FILE" -o "$SYZO_FILE"
         fi
 
