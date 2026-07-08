@@ -76,8 +76,10 @@
 import { ref, nextTick, computed, onMounted } from 'vue'
 import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
 import { useDark } from '@vueuse/core'
-import unimsg from '@/utils/unimsg'
+import { createUniMsg } from '@/utils/unimsg'
 import axios from 'axios'
+
+const uniMsg = createUniMsg() 
 
 const isDark = useDark({
   // initialValue: 'light',
@@ -231,7 +233,7 @@ const handleDownload = (filename) => {
 const handleDelete = async (filename) => {
   try {
     await axios.delete(`/${encodeURIComponent(filename)}`)
-    unimsg.success(`${delDesc.value}: ${filename}`)
+    uniMsg.success(`${delDesc.value}: ${filename}`)
     fetchFileList()
   } catch (err) {
     ElMessage.error(`${delDesc.value}失败: ${filename}`)
