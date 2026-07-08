@@ -49,7 +49,7 @@
       <div class="right-panel">
         <el-table :data="fileList" size="small" class="file-table" empty-text="无文件" border>
           <el-table-column type="index" label="序号" width="50" align="center" />
-          <el-table-column min-width="180">
+          <el-table-column min-width="180" prop="fileName" sortable :sort-method="sortFileName">
             <template #header>
               <span>文件列表 (共 {{ fileList.length }} 个文件)</span>
             </template>
@@ -159,6 +159,10 @@ const fetchFileList = async () => {
     ElMessage.error('获取文件列表失败')
   }
 }
+
+const sortFileName = (a, b) => {
+  return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+};
 
 const beforeUpload = (file) => {
   filesToUpload.value.push(file)
