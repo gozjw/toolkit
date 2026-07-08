@@ -286,6 +286,7 @@ onMounted(() => {
   font-weight: bold;
   color: var(--el-text-color-regular);
   white-space: nowrap;
+  user-select: none;
 }
 
 .value {
@@ -317,6 +318,10 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+:deep(.el-textarea__inner::placeholder) {
+  user-select: none;
 }
 
 .btn-group,
@@ -351,6 +356,10 @@ onMounted(() => {
 
 .file-table {
   width: 100%;
+}
+
+:deep(.el-table th.el-table__cell) {
+  user-select: none;
 }
 
 .file-name-link {

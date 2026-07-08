@@ -367,9 +367,19 @@ const readFileAsText = (file) => {
 }
 
 footer {
+  user-select: none;
   text-align: center;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+:deep(.el-form-item__label) {
+  user-select: none;
+}
+
+:deep(.el-input__inner::placeholder),
+:deep(.el-textarea__inner::placeholder) {
+  user-select: none;
 }
 
 @media (max-width: 480px) {
