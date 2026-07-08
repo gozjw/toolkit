@@ -136,6 +136,11 @@ const refresh = async () => {
       fetchFileList(),
       fetchText()
     ])
+    nextTick(() => {
+      if (fileTableRef.value) {
+        fileTableRef.value.clearSort()
+      }
+    })
   } catch (err) {
     ElMessage.error('刷新失败，请检查网络')
   } finally {
@@ -156,11 +161,6 @@ const fetchFileList = async () => {
   try {
     const res = await axios.get(`/list`)
     fileList.value = Array.isArray(res.data) ? res.data : []
-    nextTick(() => {
-      if (fileTableRef.value) {
-        fileTableRef.value.clearSort()
-      }
-    })
   } catch (err) {
     ElMessage.error('获取文件列表失败')
   }
