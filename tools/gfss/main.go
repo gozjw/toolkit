@@ -237,7 +237,7 @@ func upload(c *Ctx) {
 		return
 	}
 
-	var finalPath string
+	var finalName string
 	var total int64
 
 	for {
@@ -263,50 +263,61 @@ func upload(c *Ctx) {
 			return
 		}
 
-		// 构造目标文件路径并处理冲突
-		filePath := filepath.Join(workDir, fname)
-		baseName := strings.TrimSuffix(fname, filepath.Ext(fname))
-		ext := filepath.Ext(fname)
-		counter := 1
-		for {
-			_, statErr := os.Stat(filePath)
-			if statErr != nil && os.IsNotExist(statErr) {
-				break
-			}
-			filePath = filepath.Join(workDir, fmt.Sprintf("%s(%d)%s", baseName, counter, ext))
-			counter++
-		}
-
-		var filePathTmp = filePath + tmpSuffix
-		var fnameTmp = filepath.Base(filePathTmp)
-		out, err := os.Create(filePathTmp)
+		out, err := os.CreateTemp(workDir, "upload-*.tmp")
 		if err != nil {
 			part.Close()
-			writeErrorRsp(c, http.StatusInternalServerError, "创建文件失败", nil, fnameTmp)
+			writeErrorRsp(c, http.StatusInternalServerError, "创建临时文件失败", err, fname)
 			return
 		}
+		fPathTmp := out.Name()
+		fnameTmp := filepath.Base(fPathTmp)
 
-		defer os.Remove(filePathTmp)
+		defer os.Remove(fPathTmp)
 
-		// 将上传流直接写入磁盘（流式），不将整个文件读入内存
 		n, err := io.Copy(out, part)
+		out.Close()
+		part.Close()
+
 		if err != nil {
-			out.Close()
-			part.Close()
 			writeErrorRsp(c, http.StatusInternalServerError, "保存文件失败", err, fnameTmp)
 			return
 		}
 
-		out.Close()
-		part.Close()
+		baseName := strings.TrimSuffix(fname, filepath.Ext(fname))
+		ext := filepath.Ext(fname)
+		counter := 0
 
-		if err = os.Rename(filePathTmp, filePath); err != nil {
+		var finalPath string
+		for {
+			if counter == 0 {
+				finalPath = filepath.Join(workDir, fname)
+			} else {
+				finalPath = filepath.Join(workDir, fmt.Sprintf("%s(%d)%s", baseName, counter, ext))
+			}
+
+			f, err := os.OpenFile(finalPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
+			if err == nil {
+				f.Close()
+				break
+			}
+
+			// 说明是没有写入权限或其他严重错误，直接中断
+			if !os.IsExist(err) {
+				writeErrorRsp(c, http.StatusInternalServerError, "检查目标文件冲突失败", err, fname)
+				return
+			}
+
+			counter++
+		}
+
+		if err = os.Rename(fPathTmp, finalPath); err != nil {
+			os.Remove(finalPath)
 			writeErrorRsp(c, http.StatusInternalServerError, "重命名文件失败", err, fnameTmp)
 			return
 		}
 
 		total += n
-		finalPath = filepath.Base(filePath)
+		finalName = filepath.Base(finalPath)
 	}
 
 	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")
@@ -322,7 +333,7 @@ func upload(c *Ctx) {
 	}
 	c.Log.Printf(
 		"%s %s %v %s/s",
-		finalPath,
+		finalName,
 		utils.FormatBytesIEC(total),
 		elapsed.Round(time.Millisecond),
 		utils.FormatBytesIEC(speed),
