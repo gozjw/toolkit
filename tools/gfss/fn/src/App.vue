@@ -74,8 +74,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useDark } from '@vueuse/core'
 import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
+import { useDark } from '@vueuse/core'
+import unimsg from '@/utils/unimsg'
 import axios from 'axios'
 
 const isDark = useDark({
@@ -220,7 +221,7 @@ const handleDownload = (filename) => {
 const handleDelete = async (filename) => {
   try {
     await axios.delete(`/${encodeURIComponent(filename)}`)
-    ElMessage.success(`${delDesc.value}: ${filename}`)
+    unimsg.success(`${delDesc.value}: ${filename}`)
     fetchFileList()
   } catch (err) {
     ElMessage.error(`${delDesc.value}失败: ${filename}`)
