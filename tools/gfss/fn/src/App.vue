@@ -47,7 +47,7 @@
       </div>
 
       <div class="right-panel">
-        <el-table :data="fileList" size="small" class="file-table" empty-text="无文件" border>
+        <el-table ref="fileTableRef" :data="fileList" size="small" class="file-table" empty-text="无文件" border>
           <el-table-column type="index" label="序号" width="50" align="center" />
           <el-table-column min-width="180" prop="fileName" sortable :sort-method="sortFileName">
             <template #header>
@@ -73,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, nextTick, computed, onMounted } from 'vue'
 import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
 import { useDark } from '@vueuse/core'
 import unimsg from '@/utils/unimsg'
@@ -96,6 +96,7 @@ const plainText = ref('')
 const textRef = ref(null)
 const isRefreshing = ref(false)
 
+const fileTableRef = ref(null)
 const fileList = ref([])
 const clickedFiles = ref(new Set())
 
@@ -155,6 +156,11 @@ const fetchFileList = async () => {
   try {
     const res = await axios.get(`/list`)
     fileList.value = Array.isArray(res.data) ? res.data : []
+    nextTick(() => {
+      if (fileTableRef.value) {
+        fileTableRef.value.clearSort()
+      }
+    })
   } catch (err) {
     ElMessage.error('获取文件列表失败')
   }
