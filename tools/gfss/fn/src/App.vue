@@ -358,6 +358,7 @@ onMounted(() => {
   width: 100%;
 }
 
+:deep(.el-table__empty-text),
 :deep(.el-table th.el-table__cell) {
   user-select: none;
 }
