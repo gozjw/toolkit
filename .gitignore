@@ -3,4 +3,9 @@ cs
 app.ico
 resource.syso
 
+tools/gfss/fn/dist
+tools/gfss/fn/node_modules
 tools/gfss/index.html
+
+tools/secb/dist
+tools/secb/node_modules
