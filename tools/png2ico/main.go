@@ -16,8 +16,9 @@ import (
 )
 
 func main() {
-	var input, sizesStr string
+	var input, output, sizesStr string
 	flag.StringVar(&input, "i", "", "PNG 文件路径（必填）")
+	flag.StringVar(&output, "o", "", "输出 ICO 文件路径（默认与输入同名）")
 	flag.StringVar(&sizesStr, "s", "16,32,48,64,128,256", "ICO尺寸，用逗号分隔")
 	flag.Parse()
 
@@ -27,9 +28,23 @@ func main() {
 	}
 
 	outFile := input[0:len(input)-len(filepath.Ext(input))] + ".ico"
+	if output != "" {
+		outFile = output
+		absPath, err := filepath.Abs(outFile)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		dir := filepath.Dir(absPath)
+		err = os.MkdirAll(dir, 0755)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	}
 
 	var sizes []int
-	for _, s := range strings.Split(sizesStr, ",") {
+	for s := range strings.SplitSeq(sizesStr, ",") {
 		v, err := strconv.Atoi(strings.TrimSpace(s))
 		if err != nil || v <= 0 {
 			fmt.Println("尺寸参数无效:", s)
@@ -100,8 +115,6 @@ func main() {
 	for _, blob := range dataBlobs {
 		out.Write(blob)
 	}
-
-	fmt.Println("生成成功:", outFile)
 }
 
 func resizeCatmullRom(src image.Image, w, h int) *image.RGBA {

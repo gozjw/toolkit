@@ -2,74 +2,60 @@
 
 # go install github.com/akavel/rsrc@latest
 
-set -e
+set -euo pipefail
 
-BUILD_DIR="$HOME/bin"
+BUILD_DIR="${HOME}/bin"
+PROJ_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
 
-cd "$(dirname "$0")"
-PROJ_DIR="$(pwd)"
-
-if [ -z "$1" ]; then
-    TARGETS=$(find tools -mindepth 1 -maxdepth 1 -type d)
+TARGET_NAME="${1:-}"
+if [ -z "$TARGET_NAME" ]; then
+    mapfile -t TARGETS < <(find "$PROJ_DIR/tools" -mindepth 1 -maxdepth 1 -type d)
 else
-    TARGETS=$(find tools -mindepth 1 -maxdepth 1 -type d -name "${1}*")
+    mapfile -t TARGETS < <(find "$PROJ_DIR/tools" -mindepth 1 -maxdepth 1 -type d -name "${TARGET_NAME}*")
 fi
 
-if [ -z "$TARGETS" ]; then
+if [ ${#TARGETS[@]} -eq 0 ]; then
     exit 1
 fi
 
-OS=$(uname)
-
 SUFFIX=""
-if echo "$OS" | grep -qi "mingw\|msys\|cygwin"; then
+if [[ "$(uname)" =~ (MINGW|MSYS|CYGWIN) ]]; then
     SUFFIX=".exe"
 fi
 
 mkdir -p "$BUILD_DIR"
 
-for dir in $TARGETS; do
+for dir in "${TARGETS[@]}"; do
     name=$(basename "$dir")
-
+    
     if [ -f "$dir/package.json" ]; then
-        echo "构建：tools/$name ..."
-        cd $dir
-        npm run build
-        cd $PROJ_DIR
+        (cd "$dir" && npm run build)
+         echo "$dir/dist/index.html"
     fi
 
     if [ -f "$dir/main.go" ]; then
-        echo "构建：tools/$name ..."
-
         if [ -f "$dir/fn/package.json" ]; then
-            cd $dir/fn
-            npm run build
-            cd $PROJ_DIR
-            cp -f $dir/fn/dist/index.html $dir/index.html
+            (cd "$dir/fn" && npm run build)
+            cp -f "$dir/fn/dist/index.html" "$dir/index.html"
         fi
 
         PNG_FILE="$dir/app.png"
         ICON_FILE="$dir/app.ico"
         SYZO_FILE="$dir/resource.syso"
+        EXE_FILE="$BUILD_DIR/${name}${SUFFIX}"
 
-        if [ -f "$PNG_FILE" ]; then
-            echo " - png2ico：$PNG_FILE"
-            png2ico -i $PNG_FILE
-            echo " - rsrc：$ICON_FILE"
+        if [ -f "$PNG_FILE" ] && [ -n "$SUFFIX" ]; then
+            png2ico -i "$PNG_FILE"
             rsrc -ico "$ICON_FILE" -o "$SYZO_FILE"
         fi
 
-        go build -ldflags="-s -w" -trimpath -o "$BUILD_DIR/${name}${SUFFIX}" "./tools/${name}"
+        (
+            cd "$PROJ_DIR"
+            go build -ldflags="-s -w" -trimpath -o "$EXE_FILE" "./tools/${name}"
+        )
 
-        echo "生成：$BUILD_DIR/${name}${SUFFIX}"
-        echo
+        echo "$EXE_FILE"
 
-        if [ -f "$SYZO_FILE" ]; then
-            rm -f "$SYZO_FILE"
-        fi
-
-        if [ -f "$ICON_FILE" ]; then
-            rm -f "$ICON_FILE"
-        fi
+        rm -f "$SYZO_FILE" "$ICON_FILE"
     fi
 done
