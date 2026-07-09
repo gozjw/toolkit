@@ -44,6 +44,8 @@ var showDir string
 var useTrash bool
 var port int64
 
+var startTime time.Time
+
 var tmpSuffix = ".gfsstmp"
 
 var textBuf bytes.Buffer
@@ -54,6 +56,8 @@ func main() {
 	flag.Int64Var(&port, "p", 9527, "端口号")
 	flag.BoolVar(&useTrash, "t", false, "使用回收站")
 	flag.Parse()
+
+	startTime = time.Now()
 
 	log := utils.Logger{}
 	hostName, _ = os.Hostname()
@@ -83,7 +87,8 @@ func main() {
 	log.Printf("使用回收站：%t", useTrash)
 	log.Print("====================================")
 
-	go cleanTmp(&log)
+	go cleanTmpFiles(startTime, &log)
+	go scheduledTasks(&log)
 
 	server := &http.Server{
 		Addr:        addr,
@@ -496,35 +501,39 @@ func writeErrorRsp(c *Ctx, status int, msg string, err error, remarks ...string)
 	c.W.Write([]byte(msg))
 }
 
-func cleanTmp(log *utils.Logger) {
+func scheduledTasks(log *utils.Logger) {
 	ticker := time.NewTicker(time.Hour)
 	defer ticker.Stop()
 
 	for now := range ticker.C {
-		entries, err := os.ReadDir(workDir)
-		if err != nil {
-			log.Errorf("读取目录失败: %v", err)
-			return
+		cleanTmpFiles(now, log)
+	}
+}
+
+func cleanTmpFiles(now time.Time, log *utils.Logger) {
+	entries, err := os.ReadDir(workDir)
+	if err != nil {
+		log.Errorf("读取目录失败: %v", err)
+		return
+	}
+
+	for _, entry := range entries {
+		if !entry.Type().IsRegular() {
+			continue
 		}
 
-		for _, entry := range entries {
-			if !entry.Type().IsRegular() {
-				continue
-			}
+		name := entry.Name()
+		if !strings.HasSuffix(name, tmpSuffix) {
+			continue
+		}
 
-			name := entry.Name()
-			if !strings.HasSuffix(name, tmpSuffix) {
-				continue
-			}
+		info, err := entry.Info()
+		if err != nil {
+			continue
+		}
 
-			info, err := entry.Info()
-			if err != nil {
-				continue
-			}
-
-			if now.Sub(info.ModTime()) > time.Hour {
-				os.Remove(filepath.Join(workDir, name))
-			}
+		if now.Sub(info.ModTime()) > time.Hour {
+			os.Remove(filepath.Join(workDir, name))
 		}
 	}
 }
