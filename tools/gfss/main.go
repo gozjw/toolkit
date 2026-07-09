@@ -39,7 +39,7 @@ var hostName string
 var execPath string
 var workDir string
 var showDir string
-var noTrash bool
+var useTrash bool
 var port int64
 var tmpSuffix = ".tmp"
 
@@ -51,9 +51,9 @@ func main() {
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
 
-	flag.StringVar(&workDir, "d", workDir, "工作目录")
-	flag.BoolVar(&noTrash, "t", false, "不放入回收站")
+	flag.StringVar(&workDir, "d", "", "工作目录")
 	flag.Int64Var(&port, "p", 9527, "端口号")
+	flag.BoolVar(&useTrash, "t", false, "使用回收站")
 	flag.Parse()
 
 	if workDir == "" {
@@ -65,12 +65,9 @@ func main() {
 	addr := fmt.Sprintf(":%d", port)
 	ip, ipMsg := utils.GetIP()
 
-	curUser, err := user.Current()
-	if err == nil && strings.Contains(workDir, curUser.HomeDir) {
-		showDir = strings.ReplaceAll(workDir, curUser.HomeDir, "~")
-	} else {
-		showDir = workDir
-	}
+	showDir = workDir
+	curUser, _ := user.Current()
+	showDir = strings.Replace(workDir, curUser.HomeDir, "~", 1)
 
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(icon), true)
@@ -79,7 +76,7 @@ func main() {
 	log.Printf("设备名称：%s", hostName)
 	log.Printf("工作目录：%s", workDir)
 	log.Printf("网页链接：http://%s:%d %s", ip, port, ipMsg)
-	log.Printf("回收站：%t", !noTrash)
+	log.Printf("回收站：%t", useTrash)
 	server := &http.Server{
 		Addr:        addr,
 		Handler:     &Engine{},
@@ -143,9 +140,9 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func info(c *Ctx) {
-	var infos = [3]string{hostName, showDir, "移除"}
-	if noTrash {
-		infos[2] = "删除"
+	var infos = [3]string{hostName, showDir, "删除"}
+	if useTrash {
+		infos[2] = "移除"
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(c.W).Encode(infos)
@@ -180,20 +177,20 @@ func delete(c *Ctx) {
 		return
 	}
 
-	if noTrash {
-		err = os.Remove(filepath.Join(workDir, fileName))
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err, fileName)
-			return
-		}
-		c.Log.Print("d", fileName)
-	} else {
+	if useTrash {
 		err = trash.Throw(filepath.Join(workDir, fileName))
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err, fileName)
 			return
 		}
 		c.Log.Print("t", fileName)
+	} else {
+		err = os.Remove(filepath.Join(workDir, fileName))
+		if err != nil && !errors.Is(err, os.ErrNotExist) {
+			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err, fileName)
+			return
+		}
+		c.Log.Print("d", fileName)
 	}
 }
 
