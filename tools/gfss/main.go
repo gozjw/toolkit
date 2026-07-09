@@ -199,15 +199,21 @@ func delete(c *Ctx) {
 		return
 	}
 
+	fp := filepath.Join(workDir, fileName)
+	if fp == execPath {
+		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err, fileName)
+		return
+	}
+
 	if useTrash {
-		err = trash.Throw(filepath.Join(workDir, fileName))
+		err = trash.Throw(fp)
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err, fileName)
 			return
 		}
 		c.Log.Print("t", fileName)
 	} else {
-		err = os.Remove(filepath.Join(workDir, fileName))
+		err = os.Remove(fp)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err, fileName)
 			return
