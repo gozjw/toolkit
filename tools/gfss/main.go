@@ -176,15 +176,22 @@ func info(c *Ctx) {
 }
 
 func modText(c *Ctx) {
-	reqMux.Lock()
-	defer reqMux.Unlock()
-	textBuf.Reset()
-	n, err := textBuf.ReadFrom(c.R.Body)
+	tempBytes, err := io.ReadAll(http.MaxBytesReader(c.W, c.R.Body, 2*1024*1024))
 	if err != nil {
+		var maxBytesErr *http.MaxBytesError
+		if errors.As(err, &maxBytesErr) {
+			writeErrorRsp(c, http.StatusRequestEntityTooLarge, "数据超过2MB限制", err)
+			return
+		}
 		writeErrorRsp(c, http.StatusBadRequest, "参数错误", err)
 		return
 	}
-	c.Log.Print(utils.FormatBytesIEC(n))
+
+	reqMux.Lock()
+	defer reqMux.Unlock()
+	textBuf.Reset()
+	textBuf.Write(tempBytes)
+	c.Log.Print(utils.FormatBytesIEC(int64(textBuf.Len())))
 	c.W.Header().Set("Content-Type", "application/plain; charset=utf-8")
 }
 
