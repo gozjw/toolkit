@@ -79,7 +79,7 @@ import { useDark } from '@vueuse/core'
 import { createUniMsg } from '@/utils/unimsg'
 import axios from 'axios'
 
-const uniMsg = createUniMsg() 
+const uniMsg = createUniMsg()
 
 const isDark = useDark({
   // initialValue: 'light',
@@ -155,7 +155,11 @@ const sendText = async () => {
     await axios.post(`/text`, plainText.value)
     ElMessage.success('发送成功')
   } catch (err) {
-    ElMessage.error('发送失败')
+    let msg = `发送失败`
+    if (err.response) {
+      msg += `：${err.response.data}`;
+    }
+    ElMessage.error(msg)
   }
 }
 
@@ -164,7 +168,11 @@ const fetchFileList = async () => {
     const res = await axios.get(`/list`)
     fileList.value = Array.isArray(res.data) ? res.data : []
   } catch (err) {
-    ElMessage.error('获取文件列表失败')
+    let msg = `获取列表失败`
+    if (err.response) {
+      msg += `：${err.response.data}`;
+    }
+    ElMessage.error(msg)
   }
 }
 
@@ -211,7 +219,11 @@ const submitUpload = async () => {
     ElMessage.success('上传成功')
     fetchFileList()
   } catch (error) {
-    ElMessage.error('上传失败')
+    let msg = `上传失败`
+    if (err.response) {
+      msg += `：${err.response.data}`;
+    }
+    ElMessage.error(msg)
   } finally {
     isUploading.value = false
     filesToUpload.value = []
@@ -236,7 +248,11 @@ const handleDelete = async (filename) => {
     uniMsg.success(`${delDesc.value}: ${filename}`)
     fetchFileList()
   } catch (err) {
-    ElMessage.error(`${delDesc.value}失败: ${filename}`)
+    let msg = `${delDesc.value}失败: ${filename}`
+    if (err.response) {
+      msg += ` ${err.response.data}`;
+    }
+    ElMessage.error(msg)
   }
 }
 

@@ -44,9 +44,10 @@ var showDir string
 var useTrash bool
 var port int64
 
-var startTime time.Time
-
 var tmpSuffix = ".gfsstmp"
+var tft *TmpFileTracker
+
+var fdt *DownloadTracker
 
 var textBuf bytes.Buffer
 var reqMux sync.RWMutex
@@ -57,11 +58,14 @@ func main() {
 	flag.BoolVar(&useTrash, "t", false, "使用回收站")
 	flag.Parse()
 
-	startTime = time.Now()
-
 	log := utils.Logger{}
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
+
+	tft = NewTmpFileTracker()
+	defer tft.Clean()
+
+	fdt = NewDownloadTracker()
 
 	if workDir == "" {
 		workDir = flag.Arg(0)
@@ -87,9 +91,6 @@ func main() {
 	log.Printf("使用回收站：%t", useTrash)
 	log.Print("====================================")
 
-	go cleanTmpFiles(startTime, &log)
-	go scheduledTasks(&log)
-
 	server := &http.Server{
 		Addr:        addr,
 		Handler:     &Engine{},
@@ -98,7 +99,7 @@ func main() {
 	go func() {
 		if err := server.ListenAndServe(); err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {
-			log.Error("服务启动失败: %v\n", err)
+			log.Errorf("服务启动失败: %v\n", err)
 		}
 	}()
 
@@ -107,7 +108,7 @@ func main() {
 	sig := <-quit
 	log.Printf("关闭信号: %v", sig)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	server.Shutdown(ctx)
@@ -160,7 +161,7 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	case http.MethodDelete:
-		delete(c)
+		delFile(c)
 		return
 	}
 	index(c)
@@ -195,7 +196,7 @@ func text(c *Ctx) {
 	c.W.Write(textBuf.Bytes())
 }
 
-func delete(c *Ctx) {
+func delFile(c *Ctx) {
 	reqMux.Lock()
 	defer reqMux.Unlock()
 	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/"))
@@ -207,6 +208,11 @@ func delete(c *Ctx) {
 	fp := filepath.Join(workDir, fileName)
 	if fp == execPath {
 		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err, fileName)
+		return
+	}
+
+	if fdt.IsDownloading(fileName) {
+		writeErrorRsp(c, http.StatusForbidden, "文件正在被下载", err, fileName)
 		return
 	}
 
@@ -301,12 +307,14 @@ func upload(c *Ctx) {
 		}
 		fPathTmp := out.Name()
 		fnameTmp := filepath.Base(fPathTmp)
+		tft.Push(fnameTmp, out)
 
 		defer os.Remove(fPathTmp)
 
 		n, err := io.Copy(out, part)
 		out.Close()
 		part.Close()
+		tft.Pop(fnameTmp)
 
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "保存文件失败", err, fnameTmp)
@@ -399,6 +407,9 @@ func download(c *Ctx) {
 		writeErrorRsp(c, http.StatusBadRequest, "非文件路径", nil, fileName)
 		return
 	}
+
+	fdt.StartDownload(fileName)
+	defer fdt.EndDownload(fileName)
 
 	fileHeader := make([]byte, 512)
 	_, err = file.Read(fileHeader)
@@ -501,39 +512,71 @@ func writeErrorRsp(c *Ctx, status int, msg string, err error, remarks ...string)
 	c.W.Write([]byte(msg))
 }
 
-func scheduledTasks(log *utils.Logger) {
-	ticker := time.NewTicker(time.Hour)
-	defer ticker.Stop()
+type TmpFileTracker struct {
+	mux   sync.Mutex
+	files map[string]*os.File
+}
 
-	for now := range ticker.C {
-		cleanTmpFiles(now, log)
+func NewTmpFileTracker() *TmpFileTracker {
+	return &TmpFileTracker{
+		files: make(map[string]*os.File),
 	}
 }
 
-func cleanTmpFiles(now time.Time, log *utils.Logger) {
-	entries, err := os.ReadDir(workDir)
-	if err != nil {
-		log.Errorf("读取目录失败: %v", err)
+func (t *TmpFileTracker) Push(name string, f *os.File) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	t.files[name] = f
+}
+
+func (t *TmpFileTracker) Pop(name string) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	delete(t.files, name)
+}
+
+func (t *TmpFileTracker) Clean() {
+	for name, f := range t.files {
+		if f != nil {
+			f.Close()
+		}
+		os.Remove(filepath.Join(workDir, name))
+	}
+}
+
+type DownloadTracker struct {
+	mu    sync.RWMutex
+	files map[string]int
+}
+
+func NewDownloadTracker() *DownloadTracker {
+	return &DownloadTracker{
+		files: make(map[string]int),
+	}
+}
+
+func (t *DownloadTracker) StartDownload(filename string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.files[filename]++
+}
+
+func (t *DownloadTracker) EndDownload(filename string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	if t.files[filename] <= 1 {
+		delete(t.files, filename)
 		return
 	}
 
-	for _, entry := range entries {
-		if !entry.Type().IsRegular() {
-			continue
-		}
+	t.files[filename]--
+}
 
-		name := entry.Name()
-		if !strings.HasSuffix(name, tmpSuffix) {
-			continue
-		}
+func (t *DownloadTracker) IsDownloading(filename string) bool {
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 
-		info, err := entry.Info()
-		if err != nil {
-			continue
-		}
-
-		if now.Sub(info.ModTime()) > time.Hour {
-			os.Remove(filepath.Join(workDir, name))
-		}
-	}
+	count, ok := t.files[filename]
+	return ok && count > 0
 }
