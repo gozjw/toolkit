@@ -13,12 +13,14 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
 	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"toolkit/utils"
 
@@ -41,20 +43,21 @@ var workDir string
 var showDir string
 var useTrash bool
 var port int64
-var tmpSuffix = ".tmp"
+
+var tmpSuffix = ".gfsstmp"
 
 var textBuf bytes.Buffer
 var reqMux sync.RWMutex
 
 func main() {
-	log := utils.Logger{}
-	hostName, _ = os.Hostname()
-	execPath, _ = os.Executable()
-
 	flag.StringVar(&workDir, "d", "", "工作目录")
 	flag.Int64Var(&port, "p", 9527, "端口号")
 	flag.BoolVar(&useTrash, "t", false, "使用回收站")
 	flag.Parse()
+
+	log := utils.Logger{}
+	hostName, _ = os.Hostname()
+	execPath, _ = os.Executable()
 
 	if workDir == "" {
 		workDir = flag.Arg(0)
@@ -72,18 +75,37 @@ func main() {
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(icon), true)
 
-	log.Printf("----------%s----------", serverName)
+	log.Printf("====================================")
+	log.Printf("网站名称：%s", serverName)
+	log.Printf("网站地址：http://%s:%d %s", ip, port, ipMsg)
 	log.Printf("设备名称：%s", hostName)
 	log.Printf("工作目录：%s", workDir)
-	log.Printf("网页链接：http://%s:%d %s", ip, port, ipMsg)
-	log.Printf("回收站：%t", useTrash)
+	log.Printf("使用回收站：%t", useTrash)
+	log.Print("====================================")
+
+	go cleanTmp(&log)
+
 	server := &http.Server{
 		Addr:        addr,
 		Handler:     &Engine{},
 		IdleTimeout: 10 * time.Second,
 	}
-	defer server.Shutdown(context.Background())
-	server.ListenAndServe()
+	go func() {
+		if err := server.ListenAndServe(); err != nil &&
+			!errors.Is(err, http.ErrServerClosed) {
+			log.Error("服务启动失败: %v\n", err)
+		}
+	}()
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	sig := <-quit
+	log.Printf("关闭信号: %v", sig)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	server.Shutdown(ctx)
 }
 
 type Ctx struct {
@@ -260,7 +282,7 @@ func upload(c *Ctx) {
 			return
 		}
 
-		out, err := os.CreateTemp(workDir, "upload-*.tmp")
+		out, err := os.CreateTemp(workDir, "*"+tmpSuffix)
 		if err != nil {
 			part.Close()
 			writeErrorRsp(c, http.StatusInternalServerError, "创建临时文件失败", err, fname)
@@ -425,7 +447,7 @@ func getFiles() (files []string, err error) {
 
 	var list []fileInfo
 	for _, e := range fs {
-		if e.IsDir() {
+		if !e.Type().IsRegular() {
 			continue
 		}
 		name := e.Name()
@@ -466,4 +488,37 @@ func writeErrorRsp(c *Ctx, status int, msg string, err error, remarks ...string)
 	}
 	c.W.WriteHeader(status)
 	c.W.Write([]byte(msg))
+}
+
+func cleanTmp(log *utils.Logger) {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+
+	for now := range ticker.C {
+		entries, err := os.ReadDir(workDir)
+		if err != nil {
+			log.Errorf("读取目录失败: %v", err)
+			return
+		}
+
+		for _, entry := range entries {
+			if !entry.Type().IsRegular() {
+				continue
+			}
+
+			name := entry.Name()
+			if !strings.HasSuffix(name, tmpSuffix) {
+				continue
+			}
+
+			info, err := entry.Info()
+			if err != nil {
+				continue
+			}
+
+			if now.Sub(info.ModTime()) > time.Hour {
+				os.Remove(filepath.Join(workDir, name))
+			}
+		}
+	}
 }
