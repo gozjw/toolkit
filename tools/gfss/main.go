@@ -44,13 +44,12 @@ var showDir string
 var useTrash bool
 var port int64
 
-var tmpSuffix = ".gfsstmp"
-var tft *TmpFileTracker
-
-var fdt *DownloadTracker
-
 var textBuf bytes.Buffer
 var reqMux sync.RWMutex
+
+var tmpSuffix = ".gfsstmp"
+var tfTracker *TmpFileTracker
+var dlTracker *DownloadTracker
 
 func main() {
 	flag.StringVar(&workDir, "d", "", "工作目录")
@@ -62,10 +61,10 @@ func main() {
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
 
-	tft = NewTmpFileTracker()
-	defer tft.Clean()
+	tfTracker = NewTmpFileTracker()
+	defer tfTracker.Clean()
 
-	fdt = NewDownloadTracker()
+	dlTracker = NewDownloadTracker()
 
 	if workDir == "" {
 		workDir = flag.Arg(0)
@@ -197,8 +196,6 @@ func text(c *Ctx) {
 }
 
 func delFile(c *Ctx) {
-	reqMux.Lock()
-	defer reqMux.Unlock()
 	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/"))
 	if err != nil || strings.Contains(fileName, "/") {
 		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err, fileName)
@@ -211,7 +208,7 @@ func delFile(c *Ctx) {
 		return
 	}
 
-	if fdt.IsDownloading(fileName) {
+	if dlTracker.IsDownloading(fileName) {
 		writeErrorRsp(c, http.StatusForbidden, "文件正在被下载", err, fileName)
 		return
 	}
@@ -307,14 +304,14 @@ func upload(c *Ctx) {
 		}
 		fPathTmp := out.Name()
 		fnameTmp := filepath.Base(fPathTmp)
-		tft.Push(fnameTmp, out)
+		tfTracker.Push(fnameTmp, out)
 
 		defer os.Remove(fPathTmp)
 
 		n, err := io.Copy(out, part)
 		out.Close()
 		part.Close()
-		tft.Pop(fnameTmp)
+		tfTracker.Pop(fnameTmp)
 
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "保存文件失败", err, fnameTmp)
@@ -408,8 +405,8 @@ func download(c *Ctx) {
 		return
 	}
 
-	fdt.StartDownload(fileName)
-	defer fdt.EndDownload(fileName)
+	dlTracker.Start(fileName)
+	defer dlTracker.End(fileName)
 
 	fileHeader := make([]byte, 512)
 	_, err = file.Read(fileHeader)
@@ -436,7 +433,7 @@ func download(c *Ctx) {
 
 	total, err := io.Copy(c.W, file)
 	if err != nil {
-		c.Log.Errorf("Error sending file: %v", err)
+		c.Log.Errorf("传输失败: %v", err)
 		return
 	}
 
@@ -545,7 +542,7 @@ func (t *TmpFileTracker) Clean() {
 }
 
 type DownloadTracker struct {
-	mu    sync.RWMutex
+	mux   sync.RWMutex
 	files map[string]int
 }
 
@@ -555,28 +552,27 @@ func NewDownloadTracker() *DownloadTracker {
 	}
 }
 
-func (t *DownloadTracker) StartDownload(filename string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
-	t.files[filename]++
+func (t *DownloadTracker) Start(name string) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	t.files[name]++
 }
 
-func (t *DownloadTracker) EndDownload(filename string) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+func (t *DownloadTracker) End(name string) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
 
-	if t.files[filename] <= 1 {
-		delete(t.files, filename)
+	if t.files[name] <= 1 {
+		delete(t.files, name)
 		return
 	}
 
-	t.files[filename]--
+	t.files[name]--
 }
 
-func (t *DownloadTracker) IsDownloading(filename string) bool {
-	t.mu.RLock()
-	defer t.mu.RUnlock()
+func (t *DownloadTracker) IsDownloading(name string) bool {
+	t.mux.RLock()
+	defer t.mux.RUnlock()
 
-	count, ok := t.files[filename]
-	return ok && count > 0
+	return t.files[name] > 0
 }
