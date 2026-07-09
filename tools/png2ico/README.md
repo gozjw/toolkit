@@ -4,17 +4,16 @@ png to ico
 png转ico
 
 ## 使用方法：
-1. 运行：
+* 自适应模式: png2ico <一张高清PNG路径> [可选输出ICO路径]
+
+* 缝合模式: png2ico <输出ICO路径> <输入PNG_1> <输入PNG_2> ...
+
+## 示例:
 ```
-./png2ico.exe -i cs.png -o cs.ico -s "16,32,48,64,128,256"
+// 生成等比缩小所有标准尺寸的 app.ico
+png2ico app.png
 ```
-
-## 参数：
-- -i string    
-      PNG 文件路径（必填）
-
-- -o string    
-      输出 ICO 文件路径（默认与输入同名）
-
-- -s string    
-      ICO尺寸，用逗号分隔 (default "16,32,48,64,128,256")
+```
+// 将多张 PNG 缝合打包（自动识别像素并去重）
+png2ico out.ico 16.png 32.png
+```
