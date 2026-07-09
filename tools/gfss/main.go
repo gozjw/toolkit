@@ -36,6 +36,9 @@ var indexETag string
 var icon []byte
 var iconETag string
 
+const maxTextSize = 2 * 1024 * 1024
+const maxFileSize = 3 * 1024 * 1024 * 1024
+
 var serverName = "文件共享"
 var hostName string
 var execPath string
@@ -176,11 +179,12 @@ func info(c *Ctx) {
 }
 
 func modText(c *Ctx) {
-	tempBytes, err := io.ReadAll(http.MaxBytesReader(c.W, c.R.Body, 2*1024*1024))
+	tempBytes, err := io.ReadAll(http.MaxBytesReader(c.W, c.R.Body, maxTextSize))
 	if err != nil {
 		var maxBytesErr *http.MaxBytesError
 		if errors.As(err, &maxBytesErr) {
-			writeErrorRsp(c, http.StatusRequestEntityTooLarge, "数据超过2MB限制", err)
+			writeErrorRsp(c, http.StatusRequestEntityTooLarge,
+				fmt.Sprintf("文本超出%s限制", utils.FormatBytesIEC(maxTextSize)), err)
 			return
 		}
 		writeErrorRsp(c, http.StatusBadRequest, "参数错误", err)
@@ -268,6 +272,12 @@ func favicon(c *Ctx) {
 	c.W.Write(icon)
 }
 
+var uploadBufPool = sync.Pool{
+	New: func() any {
+		return make([]byte, 1*1024*1024)
+	},
+}
+
 func upload(c *Ctx) {
 	var now = time.Now()
 	// 使用流式 multipart 解析，避免将整个文件缓存在内存
@@ -315,10 +325,19 @@ func upload(c *Ctx) {
 
 		defer os.Remove(fPathTmp)
 
-		n, err := io.Copy(out, part)
+		buf := uploadBufPool.Get().([]byte)
+		n, err := io.CopyBuffer(out, io.LimitReader(part, maxFileSize+1), buf)
+		uploadBufPool.Put(buf)
+
 		out.Close()
 		part.Close()
 		tfTracker.Pop(fnameTmp)
+
+		if n > maxFileSize {
+			writeErrorRsp(c, http.StatusRequestEntityTooLarge,
+				fmt.Sprintf("文件超出%s限制", utils.FormatBytesIEC(maxFileSize)), nil, fname)
+			return
+		}
 
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "保存文件失败", err, fnameTmp)

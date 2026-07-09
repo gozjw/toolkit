@@ -218,7 +218,7 @@ const submitUpload = async () => {
     await Promise.all(uploadPromises)
     ElMessage.success('上传成功')
     fetchFileList()
-  } catch (error) {
+  } catch (err) {
     let msg = `上传失败`
     if (err.response) {
       msg += `：${err.response.data}`;
