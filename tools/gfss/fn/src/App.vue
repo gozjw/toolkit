@@ -187,10 +187,14 @@ const beforeUpload = (file) => {
 }
 
 const totalProgress = computed(() => {
-  const fileCount = filesToUpload.value.length
-  if (fileCount === 0) return 0
-  const sum = Object.values(uploadProgresses.value).reduce((a, b) => a + b, 0)
-  return Math.round(sum / fileCount)
+  if (filesToUpload.value.length === 0) return 0
+
+  const totalBytes = filesToUpload.value.reduce((sum, file) => sum + file.size, 0)
+  if (totalBytes === 0) return 0
+
+  const loadedBytes = Object.values(uploadProgresses.value).reduce((a, b) => a + b, 0)
+
+  return Math.round((loadedBytes / totalBytes) * 100)
 })
 
 // 并发上传多文件
@@ -206,10 +210,7 @@ const submitUpload = async () => {
       headers: { 'Content-Type': 'multipart/form-data' },
       timeout: 0,
       onUploadProgress: (progressEvent) => {
-        if (progressEvent.total) {
-          const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total)
-          uploadProgresses.value[file.uid] = percent
-        }
+        uploadProgresses.value[file.uid] = progressEvent.loaded
       }
     })
   })
