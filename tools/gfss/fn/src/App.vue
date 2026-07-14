@@ -20,7 +20,7 @@
     <div class="main-content">
       <div class="left-panel">
         <div class="text-section">
-          <el-input v-model="plainText" type="textarea" :rows="6" placeholder="传输文本，双击全选..." clearable
+          <el-input v-model="plainText" type="textarea" :rows="isMobile ? 6 : 12" placeholder="传输文本，双击全选..." clearable
             @dblclick="selectAllText" ref="textRef" />
           <div class="btn-group">
             <el-button type="primary" :icon="Refresh" :loading="isRefreshing" @click="refresh">刷 新</el-button>
@@ -73,7 +73,7 @@
 </template>
 
 <script setup>
-import { ref, nextTick, computed, onMounted } from 'vue'
+import { ref, nextTick, computed, onMounted, onUnmounted } from 'vue'
 import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
 import { useDark } from '@vueuse/core'
 import { createUniMsg } from '@/utils/unimsg'
@@ -89,6 +89,12 @@ const isDark = useDark({
     removeItem: () => { },
   }
 })
+
+const isMobile = ref(false)
+
+const checkDevice = () => {
+  isMobile.value = window.innerWidth < 768
+}
 
 const hostname = ref('正在加载...')
 const workdir = ref('正在加载...')
@@ -259,6 +265,12 @@ const handleDelete = async (filename) => {
 
 onMounted(() => {
   refresh()
+  checkDevice()
+  window.addEventListener('resize', checkDevice)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkDevice)
 })
 </script>
 
