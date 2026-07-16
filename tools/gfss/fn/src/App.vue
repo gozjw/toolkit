@@ -108,10 +108,6 @@ const fileTableRef = ref(null)
 const fileList = ref([])
 const clickedFiles = ref(new Set())
 
-const filesToUpload = ref([])
-const uploadProgresses = ref({})
-const isUploading = ref(false)
-
 const selectAllText = () => {
   if (textRef.value) {
     textRef.value.select()
@@ -186,14 +182,22 @@ const sortFileName = (a, b) => {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 };
 
+
+const filesToUpload = ref([])
+const uploadProgresses = ref({})
+const isUploading = ref(false)
+
 // 用于计算速度、剩余时间
 const lastLoadedTotal = ref(0)
 const lastTimeStamp = ref(Date.now())
 const speedBuffer = ref([]) // 速度缓冲区，平滑防抖
 const remainSeconds = ref(0)
-// 控制最低计算间隔，避免高频刷新
 const MIN_CALC_INTERVAL = 150 // 毫秒，150ms只算一次
 const MAX_SPEED_CACHE = 24 // 扩大缓存，平滑效果更强
+
+const totalBytes = computed(() => {
+  return filesToUpload.value.reduce((sum, file) => sum + file.size, 0)
+})
 
 const beforeUpload = (file) => {
   filesToUpload.value.push(file)
@@ -202,23 +206,22 @@ const beforeUpload = (file) => {
 }
 
 const totalProgress = computed(() => {
-  if (filesToUpload.value.length === 0) return 0
-
-  const totalBytes = filesToUpload.value.reduce((sum, file) => sum + file.size, 0)
-  if (totalBytes === 0) return 0
+  if (totalBytes.value === 0) return 0
 
   const loadedBytes = Object.values(uploadProgresses.value).reduce((a, b) => a + b, 0)
 
-  return Math.round((loadedBytes / totalBytes) * 100)
+  return Math.round((loadedBytes / totalBytes.value) * 100)
 })
 
 // 格式化：秒 → XX分XX秒
 const remainTimeText = computed(() => {
   const s = remainSeconds.value
-  if (s <= 0) return ''
-  const m = Math.floor(s / 60)
-  const sec = s % 60
-  const timeStr = m > 0 ? `${m}分${sec}秒` : `${sec}秒`
+  let timeStr = "0秒"
+  if (s > 0) {
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    timeStr = m > 0 ? `${m}分${sec}秒` : `${sec}秒`
+  }
   return `，剩余时间：${timeStr}`
 })
 
@@ -247,8 +250,7 @@ function calcRemainTime() {
 
   // 平均速度
   const avgSpeed = speedBuffer.value.reduce((sum, val) => sum + val, 0) / speedBuffer.value.length
-  const totalBytes = filesToUpload.value.reduce((sum, file) => sum + file.size, 0)
-  const remainByte = totalBytes - loadedBytes
+  const remainByte = totalBytes.value - loadedBytes
 
   if (avgSpeed > 0 && remainByte > 0) {
     remainSeconds.value = Math.round(remainByte / avgSpeed)
@@ -280,7 +282,6 @@ const submitUpload = async () => {
       timeout: 0,
       onUploadProgress: (progressEvent) => {
         uploadProgresses.value[file.uid] = progressEvent.loaded
-        // 每一段进度更新，计算剩余时间
         calcRemainTime()
       }
     })
