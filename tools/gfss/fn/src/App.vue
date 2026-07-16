@@ -40,7 +40,7 @@
         </div>
 
         <div v-if="isUploading" class="progress-bar">
-          <span class="progress-label">上传进度：</span>
+          <span class="progress-label">上传进度{{ remainTimeText }}</span>
           <el-progress :percentage="totalProgress" :stroke-width="18" text-inside />
         </div>
 
@@ -186,6 +186,13 @@ const sortFileName = (a, b) => {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 };
 
+// 用于计算速度、剩余时间
+const lastLoadedTotal = ref(0)
+const lastTimeStamp = ref(Date.now())
+const speedBuffer = ref([]) // 速度缓冲区，平滑防抖
+const MAX_BUFFER = 6 // 最多存6段速度取平均
+const remainSeconds = ref(0)
+
 const beforeUpload = (file) => {
   filesToUpload.value.push(file)
   uploadProgresses.value[file.uid] = 0
@@ -203,10 +210,59 @@ const totalProgress = computed(() => {
   return Math.round((loadedBytes / totalBytes) * 100)
 })
 
+// 格式化：秒 → XX分XX秒
+const remainTimeText = computed(() => {
+  const s = remainSeconds.value
+  if (s <= 0) return ''
+  const m = Math.floor(s / 60)
+  const sec = s % 60
+  const timeStr = m > 0 ? `${m}分${sec}秒` : `${sec}秒`
+  return `，剩余时间：${timeStr}`
+})
+
+// 更新速度，剩余时间
+function calcRemainTime() {
+  const now = Date.now()
+  const deltaT = (now - lastTimeStamp.value) / 1000
+  if (deltaT <= 0) return
+
+  // 当前全部已上传字节
+  const loadedBytes = Object.values(uploadProgresses.value).reduce((a, b) => a + b, 0)
+  const deltaByte = loadedBytes - lastLoadedTotal.value
+
+  // 瞬时速度 byte/s
+  const instantSpeed = deltaByte / deltaT
+  speedBuffer.value.push(instantSpeed)
+  // 超出长度删掉最早一条
+  if (speedBuffer.value.length > MAX_BUFFER) speedBuffer.value.shift()
+
+  // 平均速度
+  const avgSpeed = speedBuffer.value.reduce((p, c) => p + c, 0) / speedBuffer.value.length
+  // 文件总大小
+  const totalBytes = filesToUpload.value.reduce((sum, file) => sum + file.size, 0)
+  const remainByte = totalBytes - loadedBytes
+
+  if (avgSpeed > 0 && remainByte > 0) {
+    remainSeconds.value = Math.round(remainByte / avgSpeed)
+  } else {
+    remainSeconds.value = 0
+  }
+
+  // 更新上一次记录
+  lastLoadedTotal.value = loadedBytes
+  lastTimeStamp.value = now
+}
+
 // 并发上传多文件
 const submitUpload = async () => {
   if (filesToUpload.value.length === 0) return
   isUploading.value = true
+
+  // 上传前重置计时缓存
+  lastLoadedTotal.value = 0
+  lastTimeStamp.value = Date.now()
+  speedBuffer.value = []
+  remainSeconds.value = 0
 
   const uploadPromises = filesToUpload.value.map(file => {
     const formData = new FormData()
@@ -217,6 +273,8 @@ const submitUpload = async () => {
       timeout: 0,
       onUploadProgress: (progressEvent) => {
         uploadProgresses.value[file.uid] = progressEvent.loaded
+        // 每一段进度更新，计算剩余时间
+        calcRemainTime()
       }
     })
   })
