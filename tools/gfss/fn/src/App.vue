@@ -193,7 +193,7 @@ const speedBuffer = ref([]) // 速度缓冲区，平滑防抖
 const remainSeconds = ref(0)
 // 控制最低计算间隔，避免高频刷新
 const MIN_CALC_INTERVAL = 150 // 毫秒，150ms只算一次
-const MAX_SPEED_CACHE = 12 // 扩大缓存，平滑效果更强
+const MAX_SPEED_CACHE = 24 // 扩大缓存，平滑效果更强
 
 const beforeUpload = (file) => {
   filesToUpload.value.push(file)
