@@ -190,8 +190,10 @@ const sortFileName = (a, b) => {
 const lastLoadedTotal = ref(0)
 const lastTimeStamp = ref(Date.now())
 const speedBuffer = ref([]) // 速度缓冲区，平滑防抖
-const MAX_BUFFER = 6 // 最多存6段速度取平均
 const remainSeconds = ref(0)
+// 控制最低计算间隔，避免高频刷新
+const MIN_CALC_INTERVAL = 150 // 毫秒，150ms只算一次
+const MAX_SPEED_CACHE = 12 // 扩大缓存，平滑效果更强
 
 const beforeUpload = (file) => {
   filesToUpload.value.push(file)
@@ -223,22 +225,28 @@ const remainTimeText = computed(() => {
 // 更新速度，剩余时间
 function calcRemainTime() {
   const now = Date.now()
-  const deltaT = (now - lastTimeStamp.value) / 1000
+  const deltaMs = now - lastTimeStamp.value
+  // 节流：不足150ms直接跳过，减少计算频率
+  if (deltaMs < MIN_CALC_INTERVAL) return
+
+  const deltaT = deltaMs / 1000
   if (deltaT <= 0) return
 
-  // 当前全部已上传字节
+  // 全局总已上传字节
   const loadedBytes = Object.values(uploadProgresses.value).reduce((a, b) => a + b, 0)
   const deltaByte = loadedBytes - lastLoadedTotal.value
-
-  // 瞬时速度 byte/s
   const instantSpeed = deltaByte / deltaT
-  speedBuffer.value.push(instantSpeed)
-  // 超出长度删掉最早一条
-  if (speedBuffer.value.length > MAX_BUFFER) speedBuffer.value.shift()
+
+  // 过滤极端异常速度（瞬间爆冲的数值丢弃，防止时间断崖下跌）
+  if (instantSpeed > 0) {
+    speedBuffer.value.push(instantSpeed)
+    if (speedBuffer.value.length > MAX_SPEED_CACHE) {
+      speedBuffer.value.shift()
+    }
+  }
 
   // 平均速度
-  const avgSpeed = speedBuffer.value.reduce((p, c) => p + c, 0) / speedBuffer.value.length
-  // 文件总大小
+  const avgSpeed = speedBuffer.value.reduce((sum, val) => sum + val, 0) / speedBuffer.value.length
   const totalBytes = filesToUpload.value.reduce((sum, file) => sum + file.size, 0)
   const remainByte = totalBytes - loadedBytes
 
@@ -248,7 +256,6 @@ function calcRemainTime() {
     remainSeconds.value = 0
   }
 
-  // 更新上一次记录
   lastLoadedTotal.value = loadedBytes
   lastTimeStamp.value = now
 }
@@ -293,6 +300,8 @@ const submitUpload = async () => {
     isUploading.value = false
     filesToUpload.value = []
     uploadProgresses.value = {}
+    speedBuffer.value = []
+    remainSeconds.value = 0
   }
 }
 
