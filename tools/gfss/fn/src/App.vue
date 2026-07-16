@@ -215,13 +215,16 @@ const totalProgress = computed(() => {
 
 // 格式化：秒 → XX分XX秒
 const remainTimeText = computed(() => {
-  const s = remainSeconds.value
+  if (speedBuffer.value.length <= 1) return ""
+
   let timeStr = "0秒"
+  const s = remainSeconds.value
   if (s > 0) {
     const m = Math.floor(s / 60)
     const sec = s % 60
     timeStr = m > 0 ? `${m}分${sec}秒` : `${sec}秒`
   }
+  
   return `，剩余时间：${timeStr}`
 })
 
