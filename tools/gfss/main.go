@@ -14,7 +14,6 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
-	"os/user"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -78,9 +77,7 @@ func main() {
 	addr := fmt.Sprintf(":%d", port)
 	ip, ipMsg := utils.GetIP()
 
-	showDir = workDir
-	curUser, _ := user.Current()
-	showDir = strings.Replace(workDir, curUser.HomeDir, "~", 1)
+	showDir = utils.ShrinkHomePath(workDir)
 
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(icon), true)
@@ -108,7 +105,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	sig := <-quit
-	log.Printf("关闭信号: %v", sig)
+	log.Printf("收到关闭信号: %v", sig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
