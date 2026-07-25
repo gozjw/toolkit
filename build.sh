@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-BUILD_DIR="${HOME}/bin"
+BUILD_DIR="/d/a/bin"
 PROJ_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
 
 TARGET_NAME="${1:-}"
