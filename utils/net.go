@@ -1,8 +1,10 @@
 package utils
 
 import (
-	"fmt"
 	"net"
+	"os/exec"
+	"regexp"
+	"strconv"
 )
 
 func GetIP() (string, string) {
@@ -24,14 +26,34 @@ func GetIP() (string, string) {
 	return "localhost", "（未联网）"
 }
 
-func GetFreePort(port int64) int64 {
-	for {
-		address := fmt.Sprintf(":%d", port)
-		ln, err := net.Listen("tcp", address)
-		if err == nil {
-			ln.Close()
-			return port
+// 获取所有处于LISTENING的TCP端口集合
+func getListenPorts() map[int64]bool {
+	cmd := exec.Command("netstat", "-ano", "-p", "tcp")
+	output, err := cmd.Output()
+	if err != nil {
+		panic(err)
+	}
+	text := string(output)
+	reg := regexp.MustCompile(`:(\d+)\s+.*LISTENING`)
+	result := make(map[int64]bool)
+	matches := reg.FindAllStringSubmatch(text, -1)
+	for _, m := range matches {
+		portStr := m[1]
+		p, e := strconv.Atoi(portStr)
+		if e == nil {
+			result[int64(p)] = true
 		}
-		port++
+	}
+	return result
+}
+
+// 获取可用端口
+func GetFreePort(p int64) int64 {
+	occupied := getListenPorts()
+	for {
+		if !occupied[p] {
+			return p
+		}
+		p++
 	}
 }
