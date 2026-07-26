@@ -49,7 +49,7 @@ var port int64
 var textBuf bytes.Buffer
 var reqMux sync.RWMutex
 
-var tmpSuffix = ".gfsstmp"
+var tmpSuffix = ".part"
 var tfTracker *TmpFileTracker
 var dlTracker *DownloadTracker
 
