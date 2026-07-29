@@ -25,7 +25,7 @@ import (
 	"toolkit/utils"
 
 	"github.com/amalfra/etag/v3"
-	"github.com/gogpu/systray"
+	"github.com/energye/systray"
 	"github.com/hymkor/trash-go"
 )
 
@@ -35,8 +35,8 @@ var BuildGui string
 var indexHTMl []byte
 var indexETag string
 
-//go:embed app.png
-var icon []byte
+//go:embed app.ico
+var iconData []byte
 var iconETag string
 
 const maxTextSize = 2 * 1024 * 1024
@@ -95,7 +95,7 @@ func main() {
 	showDir = utils.ShrinkHomePath(workDir)
 
 	indexETag = etag.Generate(string(indexHTMl), true)
-	iconETag = etag.Generate(string(icon), true)
+	iconETag = etag.Generate(string(iconData), true)
 
 	log.Printf("====================================")
 	log.Printf("网站名称：%s", serverName)
@@ -121,7 +121,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 	if BuildGui == "1" {
-		go ShowTray(quit)
+		go showTray(quit)
 	}
 	sig := <-quit
 	log.Printf("收到关闭信号: %v", sig)
@@ -131,29 +131,28 @@ func main() {
 	server.Shutdown(ctx)
 }
 
-func ShowTray(q chan os.Signal) {
+func showTray(q chan os.Signal) {
 	// 防止右键不显示菜单，需要禁止 Go 调度器切换系统线程
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
-	tray := systray.New()
-	menu := systray.NewMenu()
-	menu.Add(fmt.Sprintf("打开界面(%d)", port), func() {
-		utils.OpenBrowser(localLink)
-	})
-	menu.AddSeparator()
-	menu.Add("退出程序", func() {
-		tray.Remove()
-		q <- os.Interrupt
-	})
-	tray.SetTooltip(serverName).SetIcon(icon).
-		SetMenu(menu).
-		OnDoubleClick(func() {
+	systray.Run(func() {
+		localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
+		systray.SetIcon(iconData)
+		systray.SetTitle(serverName)
+		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
+		systray.SetOnDClick(func(systray.IMenu) {
 			utils.OpenBrowser(localLink)
-		}).
-		Show()
-	utils.OpenBrowser(localLink)
-	tray.Run()
+		})
+		systray.SetOnRClick(func(menu systray.IMenu) {
+			menu.ShowMenu()
+		})
+		systray.AddMenuItem("打开界面", "").Click(func() {
+			utils.OpenBrowser(localLink)
+		})
+		systray.AddMenuItem("退出", "").Click(func() {
+			q <- os.Interrupt
+		})
+	}, func() {})
 }
 
 type Ctx struct {
@@ -307,9 +306,9 @@ func favicon(c *Ctx) {
 		c.W.WriteHeader(http.StatusNotModified)
 		return
 	}
-	c.W.Header().Set("Content-Type", "image/png")
+	c.W.Header().Set("Content-Type", "image/ico")
 	c.W.Header().Set("ETag", iconETag)
-	c.W.Write(icon)
+	c.W.Write(iconData)
 }
 
 var uploadBufPool = sync.Pool{

@@ -57,6 +57,6 @@ for dir in "${TARGETS[@]}"; do
 
         echo "$EXE_FILE"
 
-        rm -f "$SYZO_FILE" "$ICON_FILE"
+        rm -f "$SYZO_FILE"
     fi
 done

@@ -4,8 +4,8 @@ go 1.25.0
 
 require (
 	github.com/amalfra/etag/v3 v3.0.1
+	github.com/energye/systray v1.0.3
 	github.com/go-vgo/robotgo v0.110.8
-	github.com/gogpu/systray v0.2.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hymkor/trash-go v0.3.0
 	golang.org/x/image v0.33.0
@@ -16,7 +16,6 @@ require (
 	github.com/ebitengine/purego v0.8.3 // indirect
 	github.com/gen2brain/shm v0.1.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-webgpu/goffi v0.6.2 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 	github.com/google/uuid v1.4.0 // indirect
 	github.com/jezek/xgb v1.1.1 // indirect
