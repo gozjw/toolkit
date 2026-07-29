@@ -62,7 +62,7 @@ func main() {
 	flag.StringVar(&workDir, "d", "", "工作目录")
 	flag.Int64Var(&port, "p", 9527, "端口号")
 	flag.BoolVar(&useLogFile, "l", false, "启用日志")
-	flag.BoolVar(&useTrash, "t", false, "使用回收站")
+	flag.BoolVar(&useTrash, "t", false, "启用回收站")
 	flag.Parse()
 
 	hostName, _ = os.Hostname()
@@ -102,7 +102,7 @@ func main() {
 	log.Printf("设备名称：%s", hostName)
 	log.Printf("工作目录：%s", workDir)
 	log.Printf("启用日志：%s", logPath)
-	log.Printf("使用回收站：%t", useTrash)
+	log.Printf("启用回收站：%t", useTrash)
 	log.Print("====================================")
 
 	server := &http.Server{
