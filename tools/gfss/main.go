@@ -137,7 +137,7 @@ func ShowTray(q chan os.Signal) {
 	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
 	tray := systray.New()
 	menu := systray.NewMenu()
-	menu.Add("打开界面", func() {
+	menu.Add(fmt.Sprintf("打开界面(%d)", port), func() {
 		utils.OpenBrowser(localLink)
 	})
 	menu.AddSeparator()
