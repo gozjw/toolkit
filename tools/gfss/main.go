@@ -71,11 +71,11 @@ func main() {
 	var logPath = "false"
 	if useLogFile || BuildGui == "1" {
 		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
-		utils.SetLoggerFile(logPath)
+		utils.LogImpl.SetOut(logPath)
 	}
 
 	log := utils.Logger{}
-	defer utils.LogClean()
+	defer utils.LogImpl.Clean()
 
 	tfTracker = NewTmpFileTracker()
 	defer tfTracker.Clean()
@@ -87,6 +87,7 @@ func main() {
 	}
 
 	workDir = utils.ParseWorkDir(workDir)
+
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
 	ip, ipMsg := utils.GetIP()

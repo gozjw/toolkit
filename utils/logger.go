@@ -12,11 +12,21 @@ import (
 	"time"
 )
 
-var logLock sync.Mutex
-var logPool = sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 128)) }}
-var logFile *os.File
+func init() {
+	LogImpl = &logImpl{
+		pool: sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 128)) }},
+	}
+}
 
-func SetLoggerFile(logPath string) {
+var LogImpl *logImpl
+
+type logImpl struct {
+	lock sync.Mutex
+	pool sync.Pool
+	out  *os.File
+}
+
+func (l *logImpl) SetOut(logPath string) {
 	const maxLogSize int64 = 10 * 1024 * 1024 // 10MB
 
 	var flag int = os.O_CREATE | os.O_WRONLY
@@ -36,18 +46,18 @@ func SetLoggerFile(logPath string) {
 		panic(err)
 	}
 
-	logFile = file
+	l.out = file
 }
 
-func LogClean() {
-	if logFile != nil {
-		logFile.Close()
+func (l *logImpl) Clean() {
+	if l.out != nil {
+		l.out.Close()
 	}
 }
 
-func log(calldepth int, level string, id string, params ...any) {
-	var logBuf = logPool.Get().(*bytes.Buffer)
-	defer logPool.Put(logBuf)
+func (l *logImpl) output(calldepth int, level string, id string, params ...any) {
+	var logBuf = l.pool.Get().(*bytes.Buffer)
+	defer l.pool.Put(logBuf)
 
 	logBuf.Reset()
 	logBuf.WriteString(time.Now().Format("2006-01-02 15:04:05|"))
@@ -84,10 +94,10 @@ func log(calldepth int, level string, id string, params ...any) {
 
 	logBuf.WriteString("\n")
 
-	logLock.Lock()
-	defer logLock.Unlock()
-	if logFile != nil {
-		logFile.Write(logBuf.Bytes())
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	if l.out != nil {
+		l.out.Write(logBuf.Bytes())
 	}
 	os.Stdout.Write(logBuf.Bytes())
 }
@@ -97,25 +107,25 @@ type Logger struct {
 }
 
 func (l *Logger) Log(calldepth int, level string, params ...any) {
-	log(2+calldepth, level, l.ID, params...)
+	LogImpl.output(2+calldepth, level, l.ID, params...)
 }
 
 func (l *Logger) Logf(calldepth int, level string, format string, params ...any) {
-	log(2+calldepth, level, l.ID, fmt.Sprintf(format, params...))
+	LogImpl.output(2+calldepth, level, l.ID, fmt.Sprintf(format, params...))
 }
 
 func (l *Logger) Print(params ...any) {
-	log(2, "inf", l.ID, params...)
+	LogImpl.output(2, "inf", l.ID, params...)
 }
 
 func (l *Logger) Printf(format string, params ...any) {
-	log(2, "inf", l.ID, fmt.Sprintf(format, params...))
+	LogImpl.output(2, "inf", l.ID, fmt.Sprintf(format, params...))
 }
 
 func (l *Logger) Error(params ...any) {
-	log(2, "err", l.ID, params...)
+	LogImpl.output(2, "err", l.ID, params...)
 }
 
 func (l *Logger) Errorf(format string, params ...any) {
-	log(2, "err", l.ID, fmt.Sprintf(format, params...))
+	LogImpl.output(2, "err", l.ID, fmt.Sprintf(format, params...))
 }
