@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,8 +25,11 @@ import (
 	"toolkit/utils"
 
 	"github.com/amalfra/etag/v3"
+	"github.com/gogpu/systray"
 	"github.com/hymkor/trash-go"
 )
+
+var BuildGui string
 
 //go:embed index.html
 var indexHTMl []byte
@@ -54,14 +58,24 @@ var tfTracker *TmpFileTracker
 var dlTracker *DownloadTracker
 
 func main() {
+	var useLogFile bool
 	flag.StringVar(&workDir, "d", "", "工作目录")
 	flag.Int64Var(&port, "p", 9527, "端口号")
+	flag.BoolVar(&useLogFile, "l", false, "启用日志")
 	flag.BoolVar(&useTrash, "t", false, "使用回收站")
 	flag.Parse()
 
-	log := utils.Logger{}
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
+
+	var logPath = "false"
+	if useLogFile || BuildGui == "1" {
+		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
+		utils.SetLoggerFile(logPath)
+	}
+
+	log := utils.Logger{}
+	defer utils.LogClean()
 
 	tfTracker = NewTmpFileTracker()
 	defer tfTracker.Clean()
@@ -87,6 +101,7 @@ func main() {
 	log.Printf("网站地址：http://%s:%d %s", ip, port, ipMsg)
 	log.Printf("设备名称：%s", hostName)
 	log.Printf("工作目录：%s", workDir)
+	log.Printf("启用日志：%s", logPath)
 	log.Printf("使用回收站：%t", useTrash)
 	log.Print("====================================")
 
@@ -104,13 +119,40 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	if BuildGui == "1" {
+		go ShowTray(quit)
+	}
 	sig := <-quit
 	log.Printf("收到关闭信号: %v", sig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-
 	server.Shutdown(ctx)
+}
+
+func ShowTray(q chan os.Signal) {
+	// 防止右键不显示菜单，需要禁止 Go 调度器切换系统线程
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
+	tray := systray.New()
+	menu := systray.NewMenu()
+	menu.Add("打开界面", func() {
+		utils.OpenBrowser(localLink)
+	})
+	menu.AddSeparator()
+	menu.Add("退出程序", func() {
+		tray.Remove()
+		q <- os.Interrupt
+	})
+	tray.SetTooltip(serverName).SetIcon(icon).
+		SetMenu(menu).
+		OnDoubleClick(func() {
+			utils.OpenBrowser(localLink)
+		}).
+		Show()
+	utils.OpenBrowser(localLink)
+	tray.Run()
 }
 
 type Ctx struct {

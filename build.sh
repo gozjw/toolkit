@@ -52,6 +52,7 @@ for dir in "${TARGETS[@]}"; do
         (
             cd "$PROJ_DIR"
             go build -ldflags="-s -w" -trimpath -o "$EXE_FILE" "./tools/${name}"
+            # go build -ldflags="-s -w -H windowsgui -X main.BuildGui=1" -trimpath -o "$EXE_FILE" "./tools/${name}"
         )
 
         echo "$EXE_FILE"

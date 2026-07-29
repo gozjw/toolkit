@@ -14,6 +14,36 @@ import (
 
 var logLock sync.Mutex
 var logPool = sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 128)) }}
+var logFile *os.File
+
+func SetLoggerFile(logPath string) {
+	const maxLogSize int64 = 10 * 1024 * 1024 // 10MB
+
+	var flag int = os.O_CREATE | os.O_WRONLY
+	stat, err := os.Stat(logPath)
+	if err == nil {
+		if stat.Size() >= maxLogSize {
+			flag |= os.O_TRUNC
+		} else {
+			flag |= os.O_APPEND
+		}
+	} else {
+		flag |= os.O_APPEND
+	}
+
+	file, err := os.OpenFile(logPath, flag, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	logFile = file
+}
+
+func LogClean() {
+	if logFile != nil {
+		logFile.Close()
+	}
+}
 
 func log(calldepth int, level string, id string, params ...any) {
 	var logBuf = logPool.Get().(*bytes.Buffer)
@@ -56,6 +86,9 @@ func log(calldepth int, level string, id string, params ...any) {
 
 	logLock.Lock()
 	defer logLock.Unlock()
+	if logFile != nil {
+		logFile.Write(logBuf.Bytes())
+	}
 	os.Stdout.Write(logBuf.Bytes())
 }
 

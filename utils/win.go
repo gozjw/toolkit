@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"os/exec"
 	"syscall"
 	"unsafe"
 )
@@ -48,4 +49,14 @@ func disableQuickEditMode() {
 	mode |= 0x0080
 
 	procSetConsoleMode.Call(hStdin, uintptr(mode))
+}
+
+func OpenBrowser(url string) {
+	go func() {
+		cmd := exec.Command("cmd", "/c", "start", url)
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			CreationFlags: 0x08000000,
+		}
+		cmd.Start()
+	}()
 }
