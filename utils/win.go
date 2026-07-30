@@ -58,9 +58,8 @@ func disableQuickEditMode() {
 	procSetConsoleMode.Call(hStdin, uintptr(mode))
 }
 
-func OpenFolder(path string) error {
-	cmd := exec.Command("explorer.exe", path)
-	return cmd.Start()
+func OpenFolder(path string) {
+	exec.Command("explorer.exe", path).Start()
 }
 
 func OpenBrowser(url string) {
