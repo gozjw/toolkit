@@ -9,7 +9,6 @@ import (
 )
 
 var GuiMode string
-var IsNewConsoleSession bool
 
 var (
 	kernel32                  = syscall.NewLazyDLL("kernel32.dll")
@@ -20,8 +19,7 @@ var (
 )
 
 func init() {
-	isNewConsoleSession()
-	if IsNewConsoleSession {
+	if isNewConsoleSession() {
 		disableQuickEditMode()
 	}
 }
@@ -30,13 +28,13 @@ func IsGuiMode() bool {
 	return GuiMode == "1"
 }
 
-func isNewConsoleSession() {
+func isNewConsoleSession() bool {
 	var pids [2]uint32
 	count, _, _ := procGetConsoleProcessList.Call(
 		uintptr(unsafe.Pointer(&pids[0])),
 		uintptr(len(pids)),
 	)
-	IsNewConsoleSession = count == 1
+	return count == 1
 }
 
 func disableQuickEditMode() {
