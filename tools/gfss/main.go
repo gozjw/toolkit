@@ -29,6 +29,7 @@ import (
 	"github.com/hymkor/trash-go"
 )
 
+// -X
 var BuildGui string
 
 //go:embed index.html
@@ -87,7 +88,6 @@ func main() {
 	}
 
 	workDir = utils.ParseWorkDir(workDir)
-
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
 	ip, ipMsg := utils.GetIP()

@@ -7,7 +7,20 @@ set -euo pipefail
 BUILD_DIR="/d/a/bin"
 PROJ_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
 
-TARGET_NAME="${1:-}"
+BUILD_GUI="0"
+TARGET_NAME=""
+
+for arg in "$@"; do
+    if [[ "$arg" == "-g" ]]; then
+        BUILD_GUI="1"
+    else
+        # 第一个非-g参数作为目标名
+        if [[ -z "$TARGET_NAME" ]]; then
+            TARGET_NAME="$arg"
+        fi
+    fi
+done
+
 if [ -z "$TARGET_NAME" ]; then
     mapfile -t TARGETS < <(find "$PROJ_DIR/tools" -mindepth 1 -maxdepth 1 -type d)
 else
@@ -15,6 +28,7 @@ else
 fi
 
 if [ ${#TARGETS[@]} -eq 0 ]; then
+    echo "错误：未匹配到任何工具目录，前缀=${TARGET_NAME}"
     exit 1
 fi
 
@@ -27,10 +41,10 @@ mkdir -p "$BUILD_DIR"
 
 for dir in "${TARGETS[@]}"; do
     name=$(basename "$dir")
-    
+
     if [ -f "$dir/package.json" ]; then
         (cd "$dir" && npm run build)
-         echo "$dir/dist/index.html"
+        echo "$dir/dist/index.html"
     fi
 
     if [ -f "$dir/main.go" ]; then
@@ -42,21 +56,29 @@ for dir in "${TARGETS[@]}"; do
         PNG_FILE="$dir/app.png"
         ICON_FILE="$dir/app.ico"
         SYZO_FILE="$dir/resource.syso"
-        EXE_FILE="$BUILD_DIR/${name}${SUFFIX}"
+
+        outputName="${name}"
+        if [[ "${BUILD_GUI}" == "1" ]]; then
+            outputName="${name}-gui"
+        fi
+        EXE_FILE="$BUILD_DIR/${outputName}${SUFFIX}"
 
         if [ -f "$PNG_FILE" ] && [ -n "$SUFFIX" ]; then
             png2ico "$PNG_FILE"
             rsrc -ico "$ICON_FILE" -o "$SYZO_FILE"
         fi
 
+        LDFLAGS="-s -w"
+        if [[ "$SUFFIX" == ".exe" && "$BUILD_GUI" == "1" ]]; then
+            LDFLAGS+=" -H windowsgui -X main.BuildGui=1"
+        fi
+
         (
             cd "$PROJ_DIR"
-            go build -ldflags="-s -w" -trimpath -o "$EXE_FILE" "./tools/${name}"
-            # go build -ldflags="-s -w -H windowsgui -X main.BuildGui=1" -trimpath -o "$EXE_FILE" "./tools/${name}"
+            go build -ldflags="${LDFLAGS}" -trimpath -o "$EXE_FILE" "./tools/${name}"
         )
 
-        echo "$EXE_FILE"
-
+        echo "输出文件: $EXE_FILE"
         rm -f "$SYZO_FILE"
     fi
 done

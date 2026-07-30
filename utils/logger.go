@@ -45,7 +45,7 @@ func (l *logImpl) SetOut(logPath string) {
 	if err != nil {
 		panic(err)
 	}
-
+	l.Clean()
 	l.out = file
 }
 
