@@ -144,8 +144,9 @@ func showTray(q chan os.Signal) {
 	// 防止右键不显示菜单，需要禁止 Go 调度器切换系统线程
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
+	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
+	utils.OpenBrowser(localLink)
 	systray.Run(func() {
-		localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
 		systray.SetIcon(iconData)
 		systray.SetTitle(serverName)
 		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
