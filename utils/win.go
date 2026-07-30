@@ -16,6 +16,10 @@ var (
 	procGetConsoleMode        = kernel32.NewProc("GetConsoleMode")
 	procSetConsoleMode        = kernel32.NewProc("SetConsoleMode")
 	procGetConsoleProcessList = kernel32.NewProc("GetConsoleProcessList")
+
+	shell32             = windows.NewLazySystemDLL("shell32.dll")
+	shBrowseForFolder   = shell32.NewProc("SHBrowseForFolderW")
+	shGetPathFromIDList = shell32.NewProc("SHGetPathFromIDListW")
 )
 
 func init() {
@@ -101,27 +105,18 @@ func SelectFolder(title string) string {
 		iImage         int32
 	}
 
-	const (
-		BIF_RETURNONLYFSDIRS = 0x0001
-		BIF_NEWDIALOGSTYLE   = 0x0040
-	)
-
-	shell32 := windows.NewLazySystemDLL("shell32.dll")
-	SHBrowseForFolder := shell32.NewProc("SHBrowseForFolderW")
-	SHGetPathFromIDList := shell32.NewProc("SHGetPathFromIDListW")
-
 	titleUTF16, _ := windows.UTF16PtrFromString(title)
 	var bi BROWSEINFO
 	bi.lpszTitle = titleUTF16
-	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+	bi.ulFlags = 0x0001 | 0x0040
 
-	pidl, _, _ := SHBrowseForFolder.Call(uintptr(unsafe.Pointer(&bi)))
+	pidl, _, _ := shBrowseForFolder.Call(uintptr(unsafe.Pointer(&bi)))
 	if pidl == 0 {
 		return ""
 	}
 
 	var buf [windows.MAX_PATH]uint16
-	ok, _, _ := SHGetPathFromIDList.Call(pidl, uintptr(unsafe.Pointer(&buf[0])))
+	ok, _, _ := shGetPathFromIDList.Call(pidl, uintptr(unsafe.Pointer(&buf[0])))
 	if ok == 0 {
 		return ""
 	}
