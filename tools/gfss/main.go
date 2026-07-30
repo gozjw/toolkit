@@ -27,6 +27,7 @@ import (
 	"github.com/amalfra/etag/v3"
 	"github.com/energye/systray"
 	"github.com/hymkor/trash-go"
+	"golang.org/x/sys/windows"
 )
 
 // -X
@@ -59,6 +60,14 @@ var tfTracker *TmpFileTracker
 var dlTracker *DownloadTracker
 
 func main() {
+	if BuildGui == "1" {
+		ok, mutex := utils.CheckSingleInstance()
+		if !ok {
+			os.Exit(1)
+		}
+		defer windows.CloseHandle(mutex)
+	}
+
 	var useLogFile bool
 	flag.StringVar(&workDir, "d", "", "工作目录")
 	flag.Int64Var(&port, "p", 9527, "端口号")

@@ -4,6 +4,8 @@ import (
 	"os/exec"
 	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/windows"
 )
 
 var IsNewConsoleSession bool
@@ -59,4 +61,19 @@ func OpenBrowser(url string) {
 		}
 		cmd.Start()
 	}()
+}
+
+func CheckSingleInstance() (bool, windows.Handle) {
+	mutex, err := windows.CreateMutex(nil, false,
+		windows.StringToUTF16Ptr(`Global\FileShareServerMutex_92746185032975`))
+	if err != nil {
+		return false, 0
+	}
+
+	if windows.GetLastError() == windows.ERROR_ALREADY_EXISTS {
+		_ = windows.CloseHandle(mutex)
+		return false, 0
+	}
+
+	return true, mutex
 }
