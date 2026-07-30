@@ -30,9 +30,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-// -X
-var BuildGui string
-
 //go:embed index.html
 var indexHTMl []byte
 var indexETag string
@@ -62,7 +59,7 @@ var dlTracker *DownloadTracker
 var log = utils.Logger{}
 
 func main() {
-	if BuildGui == "1" {
+	if utils.IsGuiMode() {
 		ok, mutex := utils.CheckSingleInstance()
 		if !ok {
 			os.Exit(1)
@@ -81,11 +78,10 @@ func main() {
 	execPath, _ = os.Executable()
 
 	var logPath = "false"
-	if useLogFile || BuildGui == "1" {
+	if useLogFile || utils.IsGuiMode() {
 		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
 		utils.LogImpl.SetOut(logPath)
 	}
-
 	defer utils.LogImpl.Clean()
 
 	tfTracker = NewTmpFileTracker()
@@ -131,9 +127,11 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	if BuildGui == "1" {
+
+	if utils.IsGuiMode() {
 		go showTray(quit)
 	}
+
 	sig := <-quit
 	log.Printf("收到关闭信号: %v", sig)
 

@@ -65,12 +65,12 @@ for dir in "${TARGETS[@]}"; do
 
         if [ -f "$PNG_FILE" ] && [ -n "$SUFFIX" ]; then
             png2ico "$PNG_FILE"
-            rsrc -ico "$ICON_FILE" -o "$SYZO_FILE"
         fi
 
         LDFLAGS="-s -w"
         if [[ "$SUFFIX" == ".exe" && "$BUILD_GUI" == "1" ]]; then
-            LDFLAGS+=" -H windowsgui -X main.BuildGui=1"
+            rsrc -ico "$ICON_FILE" -o "$SYZO_FILE"
+            LDFLAGS+=" -H windowsgui -X toolkit/utils.GuiMode=1"
         fi
 
         (

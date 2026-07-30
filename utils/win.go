@@ -8,6 +8,7 @@ import (
 	"golang.org/x/sys/windows"
 )
 
+var GuiMode string
 var IsNewConsoleSession bool
 
 var (
@@ -23,6 +24,10 @@ func init() {
 	if IsNewConsoleSession {
 		disableQuickEditMode()
 	}
+}
+
+func IsGuiMode() bool {
+	return GuiMode == "1"
 }
 
 func isNewConsoleSession() {
