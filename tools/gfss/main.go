@@ -93,7 +93,8 @@ func main() {
 	dlTracker = NewDownloadTracker()
 
 	arg0 := flag.Arg(0)
-	if workDir == "" && arg0 != "" && !strings.HasPrefix(arg0, "-") {
+	if workDir == "" && arg0 != "" &&
+		!strings.HasPrefix(arg0, "-") {
 		workDir = arg0
 	}
 
@@ -164,6 +165,7 @@ func showTray(q chan os.Signal) {
 			utils.OpenFolder(workDir)
 		})
 		systray.AddMenuItem("退出", "").Click(func() {
+			systray.Quit()
 			q <- os.Interrupt
 		})
 	}, func() {})
