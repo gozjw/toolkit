@@ -72,9 +72,10 @@ func OpenBrowser(url string) {
 	}()
 }
 
-func CheckSingleInstance() (bool, windows.Handle) {
+// 单实例锁，通过内核互斥体 Mutex 实现只允许运行一个程序实例
+func CheckSingleInstance(s string) (bool, windows.Handle) {
 	mutex, err := windows.CreateMutex(nil, false,
-		windows.StringToUTF16Ptr(`Global\FileShareServerMutex_92746185032975`))
+		windows.StringToUTF16Ptr(s))
 	if err != nil {
 		return false, 0
 	}

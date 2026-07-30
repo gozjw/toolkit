@@ -40,6 +40,7 @@ var iconETag string
 
 const maxTextSize = 2 * 1024 * 1024
 const maxFileSize = 3 * 1024 * 1024 * 1024
+const appGuiMutex = `Global\FileShareServerGuiMutex_92746185032975`
 
 var serverName = "文件共享"
 var hostName string
@@ -60,7 +61,7 @@ var log = utils.Logger{}
 
 func main() {
 	if utils.IsGuiMode() {
-		ok, mutex := utils.CheckSingleInstance()
+		ok, mutex := utils.CheckSingleInstance(appGuiMutex)
 		if !ok {
 			os.Exit(1)
 		}
