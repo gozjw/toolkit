@@ -192,7 +192,7 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var c = ctxPool.Get().(*Ctx)
 	defer ctxPool.Put(c)
 	c.W, c.R = w, r
-	if idx := strings.Index(r.RemoteAddr, ":"); idx != -1 {
+	if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
 		c.Log.ID = r.RemoteAddr[:idx]
 	} else {
 		c.Log.ID = r.RemoteAddr
