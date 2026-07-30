@@ -82,3 +82,45 @@ func CheckSingleInstance() (bool, windows.Handle) {
 
 	return true, mutex
 }
+
+// SelectFolder 弹出Windows选择文件夹对话框
+// title: 窗口提示文字
+// 返回选中路径，取消则返回空字符串
+func SelectFolder(title string) string {
+	type BROWSEINFO struct {
+		hwndOwner      windows.HWND
+		pidlRoot       uintptr
+		pszDisplayName *uint16
+		lpszTitle      *uint16
+		ulFlags        uint32
+		lpfn           uintptr
+		lParam         uintptr
+		iImage         int32
+	}
+
+	const (
+		BIF_RETURNONLYFSDIRS = 0x0001
+		BIF_NEWDIALOGSTYLE   = 0x0040
+	)
+
+	shell32 := windows.NewLazySystemDLL("shell32.dll")
+	SHBrowseForFolder := shell32.NewProc("SHBrowseForFolderW")
+	SHGetPathFromIDList := shell32.NewProc("SHGetPathFromIDListW")
+
+	titleUTF16, _ := windows.UTF16PtrFromString(title)
+	var bi BROWSEINFO
+	bi.lpszTitle = titleUTF16
+	bi.ulFlags = BIF_RETURNONLYFSDIRS | BIF_NEWDIALOGSTYLE
+
+	pidl, _, _ := SHBrowseForFolder.Call(uintptr(unsafe.Pointer(&bi)))
+	if pidl == 0 {
+		return ""
+	}
+
+	var buf [windows.MAX_PATH]uint16
+	ok, _, _ := SHGetPathFromIDList.Call(pidl, uintptr(unsafe.Pointer(&buf[0])))
+	if ok == 0 {
+		return ""
+	}
+	return windows.UTF16ToString(buf[:])
+}

@@ -59,6 +59,8 @@ var tmpSuffix = ".part"
 var tfTracker *TmpFileTracker
 var dlTracker *DownloadTracker
 
+var log = utils.Logger{}
+
 func main() {
 	if BuildGui == "1" {
 		ok, mutex := utils.CheckSingleInstance()
@@ -84,7 +86,6 @@ func main() {
 		utils.LogImpl.SetOut(logPath)
 	}
 
-	log := utils.Logger{}
 	defer utils.LogImpl.Clean()
 
 	tfTracker = NewTmpFileTracker()
@@ -98,12 +99,11 @@ func main() {
 		workDir = arg0
 	}
 
-	workDir = utils.ParseWorkDir(workDir)
+	updateWorkDir(utils.ParseWorkDir(workDir))
+
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
 	ip, ipMsg := utils.GetIP()
-
-	showDir = utils.ShrinkHomePath(workDir)
 
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(iconData), true)
@@ -161,12 +161,20 @@ func showTray(q chan os.Signal) {
 		systray.AddMenuItem("打开界面", "").Click(func() {
 			utils.OpenBrowser(localLink)
 		})
+		systray.AddMenuItem("更改文件夹", "").Click(func() {
+			dir := utils.SelectFolder("请选择")
+			if dir != "" {
+				updateWorkDir(dir)
+				utils.OpenBrowser(localLink)
+				log.Printf("workDir:%s", workDir)
+			}
+		})
 		systray.AddMenuItem("打开文件夹", "").Click(func() {
 			utils.OpenFolder(workDir)
 		})
 		systray.AddMenuItem("退出", "").Click(func() {
-			systray.Quit()
 			q <- os.Interrupt
+			systray.Quit()
 		})
 	}, func() {})
 }
@@ -222,6 +230,14 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	index(c)
+}
+
+func updateWorkDir(dir string) {
+	if dir == "" {
+		return
+	}
+	workDir = dir
+	showDir = utils.ShrinkHomePath(workDir)
 }
 
 func info(c *Ctx) {
