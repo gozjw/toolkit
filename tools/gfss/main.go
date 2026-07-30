@@ -159,6 +159,9 @@ func showTray(q chan os.Signal) {
 		systray.AddMenuItem("打开界面", "").Click(func() {
 			utils.OpenBrowser(localLink)
 		})
+		systray.AddMenuItem("打开文件夹", "").Click(func() {
+			utils.OpenFolder(workDir)
+		})
 		systray.AddMenuItem("退出", "").Click(func() {
 			q <- os.Interrupt
 		})
