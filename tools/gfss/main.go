@@ -92,8 +92,9 @@ func main() {
 
 	dlTracker = NewDownloadTracker()
 
-	if workDir == "" {
-		workDir = flag.Arg(0)
+	arg0 := flag.Arg(0)
+	if workDir == "" && arg0 != "" && !strings.HasPrefix(arg0, "-") {
+		workDir = arg0
 	}
 
 	workDir = utils.ParseWorkDir(workDir)
