@@ -123,7 +123,7 @@ const initSSE = () => {
       if (res.type === 'refresh') {
         refresh();
         ElMessage({
-          message: '配置已更新！',
+          message: '配置已变更！',
           type: 'warning',
           // duration: 0,
           // showClose: true,
