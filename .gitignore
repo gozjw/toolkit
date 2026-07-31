@@ -1,14 +1,11 @@
 .vscode/
 .DS_Store
 temp.txt
-cs
 app.ico
 resource.syso
+
 **/package-lock.json
+**/node_modules
+**/dist
 
-tools/gfss/fn/dist
-tools/gfss/fn/node_modules
 tools/gfss/index.html
-
-tools/secb/dist
-tools/secb/node_modules
