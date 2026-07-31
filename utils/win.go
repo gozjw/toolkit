@@ -60,11 +60,11 @@ func disableQuickEditMode() {
 	procSetConsoleMode.Call(hStdin, uintptr(mode))
 }
 
-func OpenFolder(path string) {
+func ExplorerOpen(path string) {
 	exec.Command("explorer.exe", path).Start()
 }
 
-func OpenBrowser(url string) {
+func CmdStart(url string) {
 	go func() {
 		cmd := exec.Command("cmd", "/c", "start", url)
 		cmd.SysProcAttr = &syscall.SysProcAttr{

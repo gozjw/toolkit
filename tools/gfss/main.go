@@ -47,6 +47,7 @@ var hostName string
 var execPath string
 var workDir string
 var showDir string
+var logPath = "false"
 var useTrash bool
 var port int64
 
@@ -81,7 +82,6 @@ func main() {
 
 	sseMgr = utils.NewSSEManager()
 
-	var logPath = "false"
 	if useLogFile || utils.IsGuiMode() {
 		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
 		utils.LogImpl.SetOut(logPath)
@@ -149,19 +149,21 @@ func showTray(q chan os.Signal) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
-	// utils.OpenBrowser(localLink)
 	systray.Run(func() {
 		systray.SetIcon(iconData)
 		systray.SetTitle(serverName)
 		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
 		systray.SetOnDClick(func(systray.IMenu) {
-			utils.OpenBrowser(localLink)
+			utils.CmdStart(localLink)
 		})
 		systray.SetOnRClick(func(menu systray.IMenu) {
 			menu.ShowMenu()
 		})
 		systray.AddMenuItem("打开界面", "").Click(func() {
-			utils.OpenBrowser(localLink)
+			utils.CmdStart(localLink)
+		})
+		systray.AddMenuItem("打开日志", "").Click(func() {
+			utils.ExplorerOpen(logPath)
 		})
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
 			dir := utils.SelectFolder("请选择")
@@ -172,7 +174,7 @@ func showTray(q chan os.Signal) {
 			}
 		})
 		systray.AddMenuItem("打开文件夹", "").Click(func() {
-			utils.OpenFolder(workDir)
+			utils.ExplorerOpen(workDir)
 		})
 		systray.AddMenuItem("退出", "").Click(func() {
 			q <- os.Interrupt
