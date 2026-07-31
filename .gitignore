@@ -1,7 +1,9 @@
 .DS_Store
+tmp.txt
 cs
 app.ico
 resource.syso
+**/package-lock.json
 
 tools/gfss/fn/dist
 tools/gfss/fn/node_modules
