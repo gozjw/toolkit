@@ -57,6 +57,7 @@ var tmpSuffix = ".part"
 var tfTracker *TmpFileTracker
 var dlTracker *DownloadTracker
 
+var sseMgr *utils.SSEManager
 var log = utils.Logger{}
 
 func main() {
@@ -77,6 +78,8 @@ func main() {
 
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
+
+	sseMgr = utils.NewSSEManager()
 
 	var logPath = "false"
 	if useLogFile || utils.IsGuiMode() {
@@ -164,7 +167,7 @@ func showTray(q chan os.Signal) {
 			dir := utils.SelectFolder("请选择")
 			if dir != "" {
 				updateWorkDir(dir)
-				utils.OpenBrowser(localLink)
+				sseMgr.Broadcast(`{"type":"refresh"}`)
 				log.Printf("workDir:%s", workDir)
 			}
 		})
@@ -199,7 +202,10 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		if r.URL.Path == "/info" {
+		if r.URL.Path == "/sse" {
+			sseMgr.SSE(w, r)
+			return
+		} else if r.URL.Path == "/info" {
 			info(c)
 			return
 		} else if r.URL.Path == "/text" {

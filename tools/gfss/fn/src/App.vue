@@ -114,6 +114,24 @@ const selectAllText = () => {
   }
 }
 
+let sse = null
+const initSSE = () => {
+  sse = new EventSource('/sse')
+  sse.onmessage = (e) => {
+    try {
+      const res = JSON.parse(e.data)
+      if (res.type === 'refresh') {
+        refresh();
+      }
+    } catch (err) {
+      ElMessage.error('SSE解析出错', err)
+    }
+  }
+  sse.onerror = () => {
+    console.log('SSE断开，自动重连')
+  }
+}
+
 const fetchInfo = async () => {
   try {
     const res = await axios.get(`/info`)
@@ -224,7 +242,7 @@ const remainTimeText = computed(() => {
     const sec = s % 60
     timeStr = m > 0 ? `${m}分${sec}秒` : `${sec}秒`
   }
-  
+
   return `，剩余时间：${timeStr}`
 })
 
@@ -335,12 +353,14 @@ const handleDelete = async (filename) => {
 }
 
 onMounted(() => {
-  refresh()
-  checkDevice()
+  initSSE();
+  refresh();
+  checkDevice();
   window.addEventListener('resize', checkDevice)
 })
 
 onUnmounted(() => {
+  sse?.close();
   window.removeEventListener('resize', checkDevice)
 })
 </script>
