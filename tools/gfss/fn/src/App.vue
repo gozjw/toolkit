@@ -122,6 +122,12 @@ const initSSE = () => {
       const res = JSON.parse(e.data)
       if (res.type === 'refresh') {
         refresh();
+        ElMessage({
+          message: '配置已更新！',
+          type: 'warning',
+          // duration: 0,
+          // showClose: true,
+        })
       }
     } catch (err) {
       ElMessage.error('SSE解析出错', err)
