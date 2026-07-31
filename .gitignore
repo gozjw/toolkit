@@ -1,5 +1,6 @@
+.vscode/
 .DS_Store
-tmp.txt
+temp.txt
 cs
 app.ico
 resource.syso
