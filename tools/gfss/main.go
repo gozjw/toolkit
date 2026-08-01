@@ -59,7 +59,7 @@ var tfTracker *TmpFileTracker
 var dlTracker *DownloadTracker
 
 var sseMgr *utils.SSEManager
-var log = utils.Logger{}
+var log = utils.Ctx{}
 
 func main() {
 	if utils.IsGuiMode() {
@@ -108,14 +108,14 @@ func main() {
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(iconData), true)
 
-	log.Printf("====================================")
-	log.Printf("网站名称：%s", serverName)
-	log.Printf("网站地址：http://%s:%d %s", host, port, ipMsg)
-	log.Printf("设备名称：%s", hostName)
-	log.Printf("工作目录：%s", workDir)
-	log.Printf("启用日志：%s", logPath)
-	log.Printf("启用回收站：%t", useTrash)
-	log.Print("====================================")
+	log.Info("====================================")
+	log.Infof("网站名称：%s", serverName)
+	log.Infof("网站地址：http://%s:%d %s", host, port, ipMsg)
+	log.Infof("设备名称：%s", hostName)
+	log.Infof("工作目录：%s", workDir)
+	log.Infof("启用日志：%s", logPath)
+	log.Infof("启用回收站：%t", useTrash)
+	log.Info("====================================")
 
 	server := &http.Server{
 		Addr:        addr,
@@ -137,7 +137,7 @@ func main() {
 	}
 
 	sig := <-quit
-	log.Printf("收到关闭信号: %v", sig)
+	log.Infof("收到关闭信号: %v", sig)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -174,7 +174,7 @@ func showTray(q chan os.Signal) {
 			if dir != "" {
 				updateWorkDir(dir)
 				sseMgr.Broadcast(`{"type":"refresh"}`)
-				log.Printf("workDir:%s", workDir)
+				log.Infof("workDir:%s", workDir)
 			}
 		})
 		systray.AddMenuItem("打开文件夹", "").Click(func() {
@@ -188,29 +188,23 @@ func showTray(q chan os.Signal) {
 	}, func() {})
 }
 
-type Ctx struct {
-	W   http.ResponseWriter
-	R   *http.Request
-	Log utils.Logger
-}
-
-var ctxPool = sync.Pool{New: func() any { return &Ctx{} }}
+var ctxPool = sync.Pool{New: func() any { return &utils.Ctx{} }}
 
 type Engine struct{}
 
 func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var c = ctxPool.Get().(*Ctx)
+	var c = ctxPool.Get().(*utils.Ctx)
 	defer ctxPool.Put(c)
 	c.W, c.R = w, r
 	if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
-		c.Log.ID = r.RemoteAddr[:idx]
+		c.ID = r.RemoteAddr[:idx]
 	} else {
-		c.Log.ID = r.RemoteAddr
+		c.ID = r.RemoteAddr
 	}
 	switch r.Method {
 	case http.MethodGet:
 		if r.URL.Path == "/sse" {
-			sseMgr.SSE(w, r, c.Log.ID)
+			sseMgr.SSE(c)
 			return
 		} else if r.URL.Path == "/info" {
 			info(c)
@@ -255,7 +249,7 @@ func updateWorkDir(dir string) {
 	showDir = utils.ShrinkHomePath(workDir)
 }
 
-func info(c *Ctx) {
+func info(c *utils.Ctx) {
 	var infos = [4]string{hostName, showDir, "删除", "false"}
 	if useTrash {
 		infos[2] = "移除"
@@ -267,7 +261,7 @@ func info(c *Ctx) {
 	json.NewEncoder(c.W).Encode(infos)
 }
 
-func modText(c *Ctx) {
+func modText(c *utils.Ctx) {
 	tempBytes, err := io.ReadAll(http.MaxBytesReader(c.W, c.R.Body, maxTextSize))
 	if err != nil {
 		var maxBytesErr *http.MaxBytesError
@@ -284,18 +278,18 @@ func modText(c *Ctx) {
 	defer reqMux.Unlock()
 	textBuf.Reset()
 	textBuf.Write(tempBytes)
-	c.Log.Print(utils.FormatBytesIEC(int64(textBuf.Len())))
+	c.Info(utils.FormatBytesIEC(int64(textBuf.Len())))
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 }
 
-func text(c *Ctx) {
+func text(c *utils.Ctx) {
 	reqMux.RLock()
 	defer reqMux.RUnlock()
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.W.Write(textBuf.Bytes())
 }
 
-func delFile(c *Ctx) {
+func delFile(c *utils.Ctx) {
 	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/"))
 	if err != nil || strings.Contains(fileName, "/") {
 		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err, fileName)
@@ -319,19 +313,19 @@ func delFile(c *Ctx) {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err, fileName)
 			return
 		}
-		c.Log.Print("t", fileName)
+		c.Info("t", fileName)
 	} else {
 		err = os.Remove(fp)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err, fileName)
 			return
 		}
-		c.Log.Print("d", fileName)
+		c.Info("d", fileName)
 	}
 }
 
-func index(c *Ctx) {
-	c.Log.Print(c.R.Method, c.R.URL.Path)
+func index(c *utils.Ctx) {
+	c.Info(c.R.Method, c.R.URL.Path)
 	if c.R.Header.Get("If-None-Match") == indexETag {
 		c.W.WriteHeader(http.StatusNotModified)
 		return
@@ -341,7 +335,7 @@ func index(c *Ctx) {
 	c.W.Write(indexHTMl)
 }
 
-func list(c *Ctx) {
+func list(c *utils.Ctx) {
 	list, err := getFiles()
 	if err != nil {
 		writeErrorRsp(c, http.StatusInternalServerError, "获取文件失败", err)
@@ -351,16 +345,16 @@ func list(c *Ctx) {
 	json.NewEncoder(c.W).Encode(list)
 }
 
-func ips(c *Ctx) {
+func ips(c *utils.Ctx) {
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if utils.IsGuiMode() {
+	if utils.IsGuiMode() && utils.IsLocalIP(c.ID) {
 		c.W.Write(sseMgr.IPs())
 	} else {
 		c.W.Write([]byte("[]"))
 	}
 }
 
-func favicon(c *Ctx) {
+func favicon(c *utils.Ctx) {
 	if c.R.Header.Get("If-None-Match") == iconETag {
 		c.W.WriteHeader(http.StatusNotModified)
 		return
@@ -376,7 +370,7 @@ var uploadBufPool = sync.Pool{
 	},
 }
 
-func upload(c *Ctx) {
+func upload(c *utils.Ctx) {
 	var now = time.Now()
 	// 使用流式 multipart 解析，避免将整个文件缓存在内存
 	mr, err := c.R.MultipartReader()
@@ -490,7 +484,7 @@ func upload(c *Ctx) {
 	if elapsed > 0 {
 		speed = int64(float64(total) / elapsed.Seconds())
 	}
-	c.Log.Printf(
+	c.Infof(
 		"%s %s %v %s/s",
 		finalName,
 		utils.FormatBytesIEC(total),
@@ -499,7 +493,7 @@ func upload(c *Ctx) {
 	)
 }
 
-func download(c *Ctx) {
+func download(c *utils.Ctx) {
 	var now = time.Now()
 	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/dl/"))
 	if err != nil || strings.Contains(fileName, "/") {
@@ -557,7 +551,7 @@ func download(c *Ctx) {
 
 	total, err := io.Copy(c.W, file)
 	if err != nil {
-		c.Log.Errorf("传输失败: %v", err)
+		c.Errorf("传输失败: %v", err)
 		return
 	}
 
@@ -566,7 +560,7 @@ func download(c *Ctx) {
 	if elapsed > 0 {
 		speed = int64(float64(total) / elapsed.Seconds())
 	}
-	c.Log.Printf(
+	c.Infof(
 		"%s %s %v %s/s",
 		fileName,
 		utils.FormatBytesIEC(total),
@@ -615,18 +609,18 @@ func getFiles() (files []string, err error) {
 	return
 }
 
-func writeErrorRsp(c *Ctx, status int, msg string, err error, remarks ...string) {
+func writeErrorRsp(c *utils.Ctx, status int, msg string, err error, remarks ...string) {
 	if err == nil {
 		if len(remarks) > 0 {
-			c.Log.Log(1, "err", msg, strings.Join(remarks, " "))
+			c.Log(1, "err", msg, strings.Join(remarks, " "))
 		} else {
-			c.Log.Log(1, "err", msg)
+			c.Log(1, "err", msg)
 		}
 	} else {
 		if len(remarks) > 0 {
-			c.Log.Log(1, "err", fmt.Sprintf("%s %v", msg, err), strings.Join(remarks, " "))
+			c.Log(1, "err", fmt.Sprintf("%s %v", msg, err), strings.Join(remarks, " "))
 		} else {
-			c.Log.Log(1, "err", msg, err)
+			c.Log(1, "err", msg, err)
 		}
 	}
 	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")

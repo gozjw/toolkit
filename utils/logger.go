@@ -3,6 +3,7 @@ package utils
 import (
 	"bytes"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"runtime"
@@ -102,30 +103,32 @@ func (l *logImpl) output(calldepth int, level string, id string, params ...any) 
 	os.Stdout.Write(logBuf.Bytes())
 }
 
-type Logger struct {
+type Ctx struct {
+	W  http.ResponseWriter
+	R  *http.Request
 	ID string
 }
 
-func (l *Logger) Log(calldepth int, level string, params ...any) {
-	LogImpl.output(2+calldepth, level, l.ID, params...)
+func (t *Ctx) Log(calldepth int, level string, params ...any) {
+	LogImpl.output(2+calldepth, level, t.ID, params...)
 }
 
-func (l *Logger) Logf(calldepth int, level string, format string, params ...any) {
-	LogImpl.output(2+calldepth, level, l.ID, fmt.Sprintf(format, params...))
+func (t *Ctx) Logf(calldepth int, level string, format string, params ...any) {
+	LogImpl.output(2+calldepth, level, t.ID, fmt.Sprintf(format, params...))
 }
 
-func (l *Logger) Print(params ...any) {
-	LogImpl.output(2, "inf", l.ID, params...)
+func (t *Ctx) Info(params ...any) {
+	LogImpl.output(2, "inf", t.ID, params...)
 }
 
-func (l *Logger) Printf(format string, params ...any) {
-	LogImpl.output(2, "inf", l.ID, fmt.Sprintf(format, params...))
+func (t *Ctx) Infof(format string, params ...any) {
+	LogImpl.output(2, "inf", t.ID, fmt.Sprintf(format, params...))
 }
 
-func (l *Logger) Error(params ...any) {
-	LogImpl.output(2, "err", l.ID, params...)
+func (t *Ctx) Error(params ...any) {
+	LogImpl.output(2, "err", t.ID, params...)
 }
 
-func (l *Logger) Errorf(format string, params ...any) {
-	LogImpl.output(2, "err", l.ID, fmt.Sprintf(format, params...))
+func (t *Ctx) Errorf(format string, params ...any) {
+	LogImpl.output(2, "err", t.ID, fmt.Sprintf(format, params...))
 }

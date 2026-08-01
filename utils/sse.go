@@ -70,27 +70,27 @@ func (t *SSEManager) IPs() []byte {
 	return b
 }
 
-func (t *SSEManager) SSE(w http.ResponseWriter, r *http.Request, ip string) {
+func (t *SSEManager) SSE(c *Ctx) {
 	if !IsGuiMode() {
-		http.Error(w, "不支持SSE", http.StatusInternalServerError)
+		http.Error(c.W, "不支持SSE", http.StatusInternalServerError)
 		return
 	}
-	flusher, ok := w.(http.Flusher)
+	flusher, ok := c.W.(http.Flusher)
 	if !ok {
-		http.Error(w, "不支持流式输出", http.StatusInternalServerError)
+		http.Error(c.W, "不支持流式输出", http.StatusInternalServerError)
 		return
 	}
 
 	// SSE 必须头部
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	w.Header().Set("X-Accel-Buffering", "no")
+	c.W.Header().Set("Content-Type", "text/event-stream")
+	c.W.Header().Set("Cache-Control", "no-cache")
+	c.W.Header().Set("Connection", "keep-alive")
+	c.W.Header().Set("X-Accel-Buffering", "no")
 
 	ch := make(chan string, 5)
 	t.Mutex.Lock()
-	t.clients[w] = SSEClient{
-		IP:       ip,
+	t.clients[c.W] = SSEClient{
+		IP:       c.ID,
 		ch:       ch,
 		CreateAt: time.Now().Format("2006-01-02 15:04:05"),
 	}
@@ -98,18 +98,18 @@ func (t *SSEManager) SSE(w http.ResponseWriter, r *http.Request, ip string) {
 
 	defer func() {
 		t.Mutex.Lock()
-		delete(t.clients, w)
+		delete(t.clients, c.W)
 		t.Mutex.Unlock()
 		close(ch)
 	}()
 
 	for {
 		select {
-		case <-r.Context().Done():
+		case <-c.R.Context().Done():
 			return
 		case msg := <-ch:
 			// SSE 标准格式 data:xxx\n\n
-			fmt.Fprintf(w, "data: %s\n\n", msg)
+			fmt.Fprintf(c.W, "data: %s\n\n", msg)
 			flusher.Flush()
 		}
 	}
