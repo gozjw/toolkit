@@ -9,9 +9,9 @@ import (
 )
 
 type SSEClient struct {
-	IP       string      `json:"ip"`
-	CreateAt string      `json:"time"`
-	ch       chan string `json:"-"`
+	IP       string
+	CreateAt string
+	ch       chan string
 }
 
 type SSEManager struct {
@@ -49,12 +49,22 @@ func (t *SSEManager) Broadcast(msg string) {
 	}
 }
 
+type SSEClientRsp struct {
+	IP       string `json:"ip"`
+	CreateAt string `json:"time"`
+	IsLocal  bool   `json:"is_local"`
+}
+
 func (t *SSEManager) IPs() []byte {
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
-	var list []SSEClient
+	var list []SSEClientRsp
 	for _, c := range t.clients {
-		list = append(list, c)
+		list = append(list, SSEClientRsp{
+			IP:       c.IP,
+			CreateAt: c.CreateAt,
+			IsLocal:  IsLocalIP(c.IP),
+		})
 	}
 	b, _ := json.Marshal(list)
 	return b

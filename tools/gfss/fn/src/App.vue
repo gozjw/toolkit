@@ -72,7 +72,12 @@
 
   <el-dialog v-model="ipDialogVisible" title="连接列表" fullscreen-on-mobile :width="isMobile ? '90%' : ''">
     <el-table :data="ipList" border stripe style="width: 100%">
-      <el-table-column prop="ip" label="IP" min-width="80" />
+      <el-table-column label="IP（*为本机）" min-width="80">
+        <template #default="scope">
+          {{ scope.row.ip }}
+          <span v-if="scope.row.is_local" style="color:#00B42A;font-weight:bold;">*</span>
+        </template>
+      </el-table-column>
       <el-table-column prop="time" label="接入时间" min-width="80" />
     </el-table>
   </el-dialog>
