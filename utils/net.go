@@ -7,6 +7,15 @@ import (
 	"strconv"
 )
 
+var LocalHost string
+
+func IsLocalIp(ip string) bool {
+	if LocalHost != "" && ip == LocalHost {
+		return true
+	}
+	return ip == "127.0.0.1" || ip == "[::1]"
+}
+
 func GetIP() (string, string) {
 	ifaces, _ := net.Interfaces()
 	for _, iface := range ifaces {
@@ -19,7 +28,8 @@ func GetIP() (string, string) {
 			if ok &&
 				!ipNet.IP.IsLoopback() &&
 				ipNet.IP.To4() != nil {
-				return ipNet.IP.String(), ""
+				LocalHost = ipNet.IP.String()
+				return LocalHost, ""
 			}
 		}
 	}

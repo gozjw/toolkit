@@ -43,7 +43,6 @@
           <span class="progress-label">上传进度{{ remainTimeText }}</span>
           <el-progress :percentage="totalProgress" :stroke-width="18" text-inside />
         </div>
-
       </div>
 
       <div class="right-panel">
@@ -70,6 +69,13 @@
 
     </div>
   </div>
+
+  <el-dialog v-model="ipDialogVisible" title="连接列表" fullscreen-on-mobile :width="isMobile ? '90%' : ''">
+    <el-table :data="ipList" border stripe style="width: 100%">
+      <el-table-column prop="ip" label="IP" min-width="80" />
+      <el-table-column prop="time" label="接入时间" min-width="80" />
+    </el-table>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -109,6 +115,9 @@ const fileTableRef = ref(null)
 const fileList = ref([])
 const clickedFiles = ref(new Set())
 
+const ipDialogVisible = ref(false)
+const ipList = ref([])
+
 const selectAllText = () => {
   if (textRef.value) {
     textRef.value.select()
@@ -122,12 +131,18 @@ const initSSE = () => {
   sse.onmessage = (e) => {
     try {
       const res = JSON.parse(e.data)
-      if (res.type === 'refresh') {
-        refresh();
-        ElMessage({
-          message: '配置已变更！',
-          type: 'warning',
-        })
+      switch (res.type) {
+        case 'refresh':
+          refresh();
+          ElMessage({
+            message: '配置已变更！',
+            type: 'warning',
+          });
+          break;
+        case 'ips':
+          fetchIPList();
+          break;
+        default:
       }
     } catch (err) {
       ElMessage.error('SSE解析出错', err)
@@ -207,6 +222,16 @@ const fetchFileList = async () => {
     }
     ElMessage.error(msg)
   }
+}
+
+const fetchIPList = async () => {
+  const res = await axios.get(`/ips`)
+  ipList.value = Array.isArray(res.data)
+    ? res.data.sort((a, b) => {
+      return new Date(b.time) - new Date(a.time)
+    })
+    : []
+  ipDialogVisible.value = true
 }
 
 const sortFileName = (a, b) => {

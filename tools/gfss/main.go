@@ -103,14 +103,14 @@ func main() {
 
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
-	ip, ipMsg := utils.GetIP()
+	host, ipMsg := utils.GetIP()
 
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(iconData), true)
 
 	log.Printf("====================================")
 	log.Printf("网站名称：%s", serverName)
-	log.Printf("网站地址：http://%s:%d %s", ip, port, ipMsg)
+	log.Printf("网站地址：http://%s:%d %s", host, port, ipMsg)
 	log.Printf("设备名称：%s", hostName)
 	log.Printf("工作目录：%s", workDir)
 	log.Printf("启用日志：%s", logPath)
@@ -165,6 +165,9 @@ func showTray(q chan os.Signal) {
 		systray.AddMenuItem("打开日志", "").Click(func() {
 			utils.ExplorerOpen(logPath)
 		})
+		systray.AddMenuItem("查看连接", "").Click(func() {
+			sseMgr.BroadcastLocal(`{"type":"ips"}`)
+		})
 		systray.AddSeparator()
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
 			dir := utils.SelectFolder("请选择")
@@ -207,7 +210,7 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		if r.URL.Path == "/sse" {
-			sseMgr.SSE(w, r)
+			sseMgr.SSE(w, r, c.Log.ID)
 			return
 		} else if r.URL.Path == "/info" {
 			info(c)
@@ -217,6 +220,9 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if r.URL.Path == "/list" {
 			list(c)
+			return
+		} else if r.URL.Path == "/ips" {
+			ips(c)
 			return
 		} else if r.URL.Path == "/favicon.ico" {
 			favicon(c)
@@ -343,6 +349,15 @@ func list(c *Ctx) {
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(c.W).Encode(list)
+}
+
+func ips(c *Ctx) {
+	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
+	if utils.IsGuiMode() {
+		c.W.Write(sseMgr.IPs())
+	} else {
+		c.W.Write([]byte("[]"))
+	}
 }
 
 func favicon(c *Ctx) {

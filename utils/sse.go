@@ -1,34 +1,70 @@
 package utils
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 )
 
+type SSEClient struct {
+	IP       string      `json:"ip"`
+	CreateAt string      `json:"time"`
+	ch       chan string `json:"-"`
+}
+
 type SSEManager struct {
-	clients map[http.ResponseWriter]chan string
+	clients map[http.ResponseWriter]SSEClient
 	Mutex   sync.Mutex
 }
 
 func NewSSEManager() *SSEManager {
 	return &SSEManager{
-		clients: make(map[http.ResponseWriter]chan string),
+		clients: make(map[http.ResponseWriter]SSEClient),
+	}
+}
+
+func (t *SSEManager) BroadcastLocal(msg string) {
+	t.Mutex.Lock()
+	defer t.Mutex.Unlock()
+	for _, c := range t.clients {
+		if IsLocalIp(c.IP) {
+			select {
+			case c.ch <- msg:
+			default:
+			}
+		}
 	}
 }
 
 func (t *SSEManager) Broadcast(msg string) {
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
-	for _, ch := range t.clients {
+	for _, c := range t.clients {
 		select {
-		case ch <- msg:
+		case c.ch <- msg:
 		default:
 		}
 	}
 }
 
-func (t *SSEManager) SSE(w http.ResponseWriter, r *http.Request) {
+func (t *SSEManager) IPs() []byte {
+	t.Mutex.Lock()
+	defer t.Mutex.Unlock()
+	var list []SSEClient
+	for _, c := range t.clients {
+		list = append(list, c)
+	}
+	b, _ := json.Marshal(list)
+	return b
+}
+
+func (t *SSEManager) SSE(w http.ResponseWriter, r *http.Request, ip string) {
+	if !IsGuiMode() {
+		http.Error(w, "不支持SSE", http.StatusInternalServerError)
+		return
+	}
 	flusher, ok := w.(http.Flusher)
 	if !ok {
 		http.Error(w, "不支持流式输出", http.StatusInternalServerError)
@@ -43,7 +79,11 @@ func (t *SSEManager) SSE(w http.ResponseWriter, r *http.Request) {
 
 	ch := make(chan string, 5)
 	t.Mutex.Lock()
-	t.clients[w] = ch
+	t.clients[w] = SSEClient{
+		IP:       ip,
+		ch:       ch,
+		CreateAt: time.Now().Format("2006-01-02 15:04:05"),
+	}
 	t.Mutex.Unlock()
 
 	defer func() {
