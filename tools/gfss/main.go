@@ -248,9 +248,12 @@ func updateWorkDir(dir string) {
 }
 
 func info(c *Ctx) {
-	var infos = [3]string{hostName, showDir, "删除"}
+	var infos = [4]string{hostName, showDir, "删除", "false"}
 	if useTrash {
 		infos[2] = "移除"
+	}
+	if utils.IsGuiMode() {
+		infos[3] = "true"
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(c.W).Encode(infos)

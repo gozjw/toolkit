@@ -99,6 +99,7 @@ const checkDevice = () => {
 const hostname = ref('正在加载...')
 const workdir = ref('正在加载...')
 const delDesc = ref('删除')
+const guiMode = ref(false)
 
 const plainText = ref('')
 const textRef = ref(null)
@@ -116,6 +117,7 @@ const selectAllText = () => {
 
 let sse = null
 const initSSE = () => {
+  if (sse || !guiMode.value) return
   sse = new EventSource('/sse')
   sse.onmessage = (e) => {
     try {
@@ -125,8 +127,6 @@ const initSSE = () => {
         ElMessage({
           message: '配置已变更！',
           type: 'warning',
-          // duration: 0,
-          // showClose: true,
         })
       }
     } catch (err) {
@@ -138,12 +138,19 @@ const initSSE = () => {
   }
 }
 
+const closeSSE = () => {
+  if (!sse) return
+  sse.close()
+  sse = null
+}
+
 const fetchInfo = async () => {
   try {
     const res = await axios.get(`/info`)
     hostname.value = res.data[0] || '未知设备'
     workdir.value = res.data[1] || '未知目录'
     delDesc.value = res.data[2] || '删除'
+    guiMode.value = res.data[3] == "true"
   } catch (err) {
     ElMessage.error('无法获取系统信息')
   }
@@ -359,14 +366,17 @@ const handleDelete = async (filename) => {
 }
 
 onMounted(() => {
-  initSSE();
-  refresh();
+  fetchInfo().then(() => {
+    initSSE();
+  });
+  fetchText();
+  fetchFileList();
   checkDevice();
   window.addEventListener('resize', checkDevice)
 })
 
 onUnmounted(() => {
-  sse?.close();
+  closeSSE();
   window.removeEventListener('resize', checkDevice)
 })
 </script>
