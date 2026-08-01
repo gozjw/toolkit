@@ -285,13 +285,13 @@ func modText(c *Ctx) {
 	textBuf.Reset()
 	textBuf.Write(tempBytes)
 	c.Log.Print(utils.FormatBytesIEC(int64(textBuf.Len())))
-	c.W.Header().Set("Content-Type", "application/plain; charset=utf-8")
+	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 }
 
 func text(c *Ctx) {
 	reqMux.RLock()
 	defer reqMux.RUnlock()
-	c.W.Header().Set("Content-Type", "application/plain; charset=utf-8")
+	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 	c.W.Write(textBuf.Bytes())
 }
 
@@ -629,6 +629,7 @@ func writeErrorRsp(c *Ctx, status int, msg string, err error, remarks ...string)
 			c.Log.Log(1, "err", msg, err)
 		}
 	}
+	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")
 	c.W.WriteHeader(status)
 	c.W.Write([]byte(msg))
 }

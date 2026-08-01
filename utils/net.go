@@ -9,7 +9,7 @@ import (
 
 var LocalHost string
 
-func IsLocalIp(ip string) bool {
+func IsLocalIP(ip string) bool {
 	if LocalHost != "" && ip == LocalHost {
 		return true
 	}

@@ -29,7 +29,7 @@ func (t *SSEManager) BroadcastLocal(msg string) {
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
 	for _, c := range t.clients {
-		if IsLocalIp(c.IP) {
+		if IsLocalIP(c.IP) {
 			select {
 			case c.ch <- msg:
 			default:

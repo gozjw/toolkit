@@ -173,7 +173,7 @@ const fetchInfo = async () => {
 
 const fetchText = async () => {
   const res = await axios.get(`/text`)
-  plainText.value = res.data || ''
+  plainText.value = res.data?.text ?? ''
 }
 
 const refresh = async () => {
@@ -200,7 +200,7 @@ const refresh = async () => {
 
 const sendText = async () => {
   try {
-    await axios.post(`/text`, plainText.value)
+    await axios.post(`/text`, { text: plainText.value })
     ElMessage.success('发送成功')
   } catch (err) {
     let msg = `发送失败`
