@@ -165,6 +165,7 @@ func showTray(q chan os.Signal) {
 		systray.AddMenuItem("打开日志", "").Click(func() {
 			utils.ExplorerOpen(logPath)
 		})
+		systray.AddSeparator()
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
 			dir := utils.SelectFolder("请选择")
 			if dir != "" {
@@ -176,6 +177,7 @@ func showTray(q chan os.Signal) {
 		systray.AddMenuItem("打开文件夹", "").Click(func() {
 			utils.ExplorerOpen(workDir)
 		})
+		systray.AddSeparator()
 		systray.AddMenuItem("退出", "").Click(func() {
 			q <- os.Interrupt
 			systray.Quit()
