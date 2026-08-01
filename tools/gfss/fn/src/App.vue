@@ -395,6 +395,8 @@ const handleDelete = async (filename) => {
   }
 }
 
+window.addEventListener("beforeunload", () => { closeSSE() });
+
 onMounted(() => {
   fetchInfo().then(() => {
     initSSE();
