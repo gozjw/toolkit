@@ -10,7 +10,7 @@ import (
 
 type SSEClient struct {
 	IP       string
-	CreateAt string
+	CreateAt time.Time
 	ch       chan string
 }
 
@@ -51,7 +51,7 @@ func (t *SSEManager) Broadcast(msg string) {
 
 type SSEClientRsp struct {
 	IP       string `json:"ip"`
-	CreateAt string `json:"time"`
+	CreateAt string `json:"create_at"`
 	IsLocal  bool   `json:"is_local"`
 }
 
@@ -62,7 +62,7 @@ func (t *SSEManager) IPs() []byte {
 	for _, c := range t.clients {
 		list = append(list, SSEClientRsp{
 			IP:       c.IP,
-			CreateAt: c.CreateAt,
+			CreateAt: c.CreateAt.Format("2006-01-02 15:04:05"),
 			IsLocal:  IsLocalIP(c.IP),
 		})
 	}
@@ -92,7 +92,7 @@ func (t *SSEManager) SSE(c *Ctx) {
 	t.clients[c.W] = SSEClient{
 		IP:       c.ID,
 		ch:       ch,
-		CreateAt: time.Now().Format("2006-01-02 15:04:05"),
+		CreateAt: time.Now(),
 	}
 	t.Mutex.Unlock()
 
