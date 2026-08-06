@@ -100,7 +100,9 @@ func (l *logImpl) output(calldepth int, level string, id string, params ...any) 
 	if l.out != nil {
 		l.out.Write(logBuf.Bytes())
 	}
-	os.Stdout.Write(logBuf.Bytes())
+	if !IsGuiMode {
+		os.Stdout.Write(logBuf.Bytes())
+	}
 }
 
 type Ctx struct {
