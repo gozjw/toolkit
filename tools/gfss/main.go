@@ -62,7 +62,7 @@ var sseMgr *utils.SSEManager
 var log = utils.Ctx{}
 
 func main() {
-	if utils.IsGuiMode() {
+	if utils.IsGuiMode {
 		ok, mutex := utils.CheckSingleInstance(appGuiMutex)
 		if !ok {
 			os.Exit(1)
@@ -82,7 +82,7 @@ func main() {
 
 	sseMgr = utils.NewSSEManager()
 
-	if useLogFile || utils.IsGuiMode() {
+	if useLogFile || utils.IsGuiMode {
 		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
 		utils.LogImpl.SetOut(logPath)
 	}
@@ -132,7 +132,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	if utils.IsGuiMode() {
+	if utils.IsGuiMode {
 		go showTray(quit)
 	}
 
@@ -251,7 +251,7 @@ func info(c *utils.Ctx) {
 	if useTrash {
 		infos[2] = "移除"
 	}
-	if utils.IsGuiMode() {
+	if utils.IsGuiMode {
 		infos[3] = "true"
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")

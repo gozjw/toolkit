@@ -9,6 +9,7 @@ import (
 )
 
 var GuiMode string
+var IsGuiMode = GuiMode == "1"
 
 var (
 	kernel32                  = syscall.NewLazyDLL("kernel32.dll")
@@ -26,10 +27,6 @@ func init() {
 	if isNewConsoleSession() {
 		disableQuickEditMode()
 	}
-}
-
-func IsGuiMode() bool {
-	return GuiMode == "1"
 }
 
 func isNewConsoleSession() bool {

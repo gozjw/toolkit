@@ -83,7 +83,7 @@ func (t *SSEManager) IPs() (list []SSEClientRsp) {
 }
 
 func (t *SSEManager) SSE(c *Ctx) {
-	if !IsGuiMode() {
+	if !IsGuiMode {
 		http.Error(c.W, "不支持SSE", http.StatusInternalServerError)
 		return
 	}
