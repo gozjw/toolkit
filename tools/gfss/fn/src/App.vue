@@ -102,7 +102,6 @@ const isDark = useDark({
 })
 
 const isMobile = ref(false)
-
 const checkDevice = () => {
   isMobile.value = window.innerWidth < 768
 }
@@ -132,22 +131,15 @@ const selectAllText = () => {
 let sse = null
 const initSSE = () => {
   if (sse || !guiMode.value) return
+
   sse = new EventSource('/sse')
   sse.onmessage = (e) => {
     try {
       const res = JSON.parse(e.data)
-      switch (res.type) {
-        case 'refresh':
-          refresh();
-          ElMessage({
-            message: '配置已变更！',
-            type: 'warning',
-          });
-          break;
-        case 'ips':
-          fetchIPList();
-          break;
-        default:
+      switch (res.event) {
+        case 'refresh': eventRefresh(); break;
+        case 'ips': eventIPs(res); break;
+        default: break;
       }
     } catch (err) {
       ElMessage.error('SSE解析出错', err)
@@ -162,6 +154,23 @@ const closeSSE = () => {
   if (!sse) return
   sse.close()
   sse = null
+}
+
+const eventRefresh = () => {
+  refresh()
+  ElMessage({
+    message: '配置已变更！',
+    type: 'warning',
+  })
+}
+
+const eventIPs = (res) => {
+  ipList.value = Array.isArray(res.data)
+    ? res.data.sort((a, b) => {
+      return new Date(b.create_at) - new Date(a.create_at)
+    })
+    : []
+  ipDialogVisible.value = true
 }
 
 const fetchInfo = async () => {
@@ -229,20 +238,9 @@ const fetchFileList = async () => {
   }
 }
 
-const fetchIPList = async () => {
-  const res = await axios.get(`/ips`)
-  ipList.value = Array.isArray(res.data)
-    ? res.data.sort((a, b) => {
-      return new Date(b.create_at) - new Date(a.create_at)
-    })
-    : []
-  ipDialogVisible.value = true
-}
-
 const sortFileName = (a, b) => {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
 };
-
 
 const filesToUpload = ref([])
 const uploadProgresses = ref({})
@@ -270,7 +268,6 @@ const totalProgress = computed(() => {
   if (totalBytes.value === 0) return 0
 
   const loadedBytes = Object.values(uploadProgresses.value).reduce((a, b) => a + b, 0)
-
   return Math.round((loadedBytes / totalBytes.value) * 100)
 })
 

@@ -25,25 +25,39 @@ func NewSSEManager() *SSEManager {
 	}
 }
 
-func (t *SSEManager) BroadcastLocal(msg string) {
-	t.Mutex.Lock()
-	defer t.Mutex.Unlock()
-	for _, c := range t.clients {
-		if IsLocalIP(c.IP) {
-			select {
-			case c.ch <- msg:
-			default:
-			}
-		}
-	}
+type SSEData struct {
+	Event string `json:"event"`
+	Data  any    `json:"data,omitempty"`
 }
 
-func (t *SSEManager) Broadcast(msg string) {
+func (t *SSEManager) BroadcastLocal(event string, data any) {
+	b, _ := json.Marshal(SSEData{
+		Event: event,
+		Data:  data,
+	})
+	t.broadcast(true, b)
+}
+
+func (t *SSEManager) Broadcast(event string, data any) {
+	b, _ := json.Marshal(SSEData{
+		Event: event,
+		Data:  data,
+	})
+	t.broadcast(false, b)
+}
+
+func (t *SSEManager) broadcast(local bool, b []byte) {
+	if len(b) == 0 {
+		return
+	}
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
 	for _, c := range t.clients {
+		if local && !IsLocalIP(c.IP) {
+			continue
+		}
 		select {
-		case c.ch <- msg:
+		case c.ch <- string(b):
 		default:
 		}
 	}
@@ -55,10 +69,9 @@ type SSEClientRsp struct {
 	IsLocal  bool   `json:"is_local"`
 }
 
-func (t *SSEManager) IPs() []byte {
+func (t *SSEManager) IPs() (list []SSEClientRsp) {
 	t.Mutex.Lock()
 	defer t.Mutex.Unlock()
-	var list []SSEClientRsp
 	for _, c := range t.clients {
 		list = append(list, SSEClientRsp{
 			IP:       c.IP,
@@ -66,8 +79,7 @@ func (t *SSEManager) IPs() []byte {
 			IsLocal:  IsLocalIP(c.IP),
 		})
 	}
-	b, _ := json.Marshal(list)
-	return b
+	return
 }
 
 func (t *SSEManager) SSE(c *Ctx) {

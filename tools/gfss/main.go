@@ -166,14 +166,14 @@ func showTray(q chan os.Signal) {
 			utils.ExplorerOpen(logPath)
 		})
 		systray.AddMenuItem("查看连接", "").Click(func() {
-			sseMgr.BroadcastLocal(`{"type":"ips"}`)
+			sseMgr.BroadcastLocal("ips", sseMgr.IPs())
 		})
 		systray.AddSeparator()
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
 			dir := utils.SelectFolder("请选择")
 			if dir != "" {
 				updateWorkDir(dir)
-				sseMgr.Broadcast(`{"type":"refresh"}`)
+				sseMgr.Broadcast("refresh", nil)
 				log.Infof("workDir:%s", workDir)
 			}
 		})
@@ -214,9 +214,6 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		} else if r.URL.Path == "/list" {
 			list(c)
-			return
-		} else if r.URL.Path == "/ips" {
-			ips(c)
 			return
 		} else if r.URL.Path == "/favicon.ico" {
 			favicon(c)
@@ -348,15 +345,6 @@ func list(c *utils.Ctx) {
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
 	json.NewEncoder(c.W).Encode(list)
-}
-
-func ips(c *utils.Ctx) {
-	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	if utils.IsGuiMode() && utils.IsLocalIP(c.ID) {
-		c.W.Write(sseMgr.IPs())
-	} else {
-		c.W.Write([]byte("[]"))
-	}
 }
 
 func favicon(c *utils.Ctx) {
