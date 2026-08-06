@@ -75,10 +75,10 @@
       <el-table-column label="IP（*为本机）" min-width="80">
         <template #default="scope">
           {{ scope.row.ip }}
-          <span v-if="scope.row.is_local" style="color:#00B42A;font-weight:bold;">*</span>
+          <span v-if="scope.row.isLocal" style="color:#00B42A;font-weight:bold;">*</span>
         </template>
       </el-table-column>
-      <el-table-column prop="create_at" label="接入时间" min-width="80" />
+      <el-table-column prop="createAt" label="接入时间" min-width="80" />
     </el-table>
   </el-dialog>
 </template>
@@ -167,11 +167,7 @@ const eventRefresh = () => {
 }
 
 const eventIPs = (res) => {
-  ipList.value = Array.isArray(res.data)
-    ? res.data.sort((a, b) => {
-      return new Date(b.create_at) - new Date(a.create_at)
-    })
-    : []
+  ipList.value = Array.isArray(res.data) ? res.data : []
   ipDialogVisible.value = true
 }
 

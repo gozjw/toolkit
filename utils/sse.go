@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"sort"
 	"sync"
 	"time"
 )
@@ -65,8 +66,9 @@ func (t *SSEManager) broadcast(local bool, b []byte) {
 
 type SSEClientRsp struct {
 	IP       string `json:"ip"`
-	CreateAt string `json:"create_at"`
-	IsLocal  bool   `json:"is_local"`
+	CreateAt string `json:"createAt"`
+	IsLocal  bool   `json:"isLocal"`
+	createAt time.Time
 }
 
 func (t *SSEManager) IPs() (list []SSEClientRsp) {
@@ -76,9 +78,13 @@ func (t *SSEManager) IPs() (list []SSEClientRsp) {
 		list = append(list, SSEClientRsp{
 			IP:       c.IP,
 			CreateAt: c.CreateAt.Format("2006-01-02 15:04:05"),
+			createAt: c.CreateAt,
 			IsLocal:  IsLocalIP(c.IP),
 		})
 	}
+	sort.Slice(list, func(i, j int) bool {
+		return list[i].createAt.After(list[j].createAt)
+	})
 	return
 }
 
