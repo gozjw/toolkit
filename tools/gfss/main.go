@@ -265,16 +265,25 @@ func updateWorkDir(dir string) {
 	showDir = utils.ShrinkHomePath(workDir)
 }
 
+type InfoRsp struct {
+	HostName  string `json:"hostName"`
+	WorkDir   string `json:"workDir"`
+	DelDesc   string `json:"delDesc"`
+	IsGuiMode bool   `json:"isGuiMode"`
+}
+
 func info(c *utils.Ctx) {
-	var infos = [4]string{hostName, showDir, "删除", "false"}
-	if useTrash {
-		infos[2] = "移除"
+	var rsp = InfoRsp{
+		HostName:  hostName,
+		WorkDir:   showDir,
+		DelDesc:   "删除",
+		IsGuiMode: utils.IsGuiMode,
 	}
-	if utils.IsGuiMode {
-		infos[3] = "true"
+	if useTrash {
+		rsp.DelDesc = "移除"
 	}
 	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(c.W).Encode(infos)
+	json.NewEncoder(c.W).Encode(rsp)
 }
 
 func modText(c *utils.Ctx) {

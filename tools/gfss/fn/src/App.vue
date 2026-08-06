@@ -8,11 +8,11 @@
       <div class="info-grid">
         <div class="info-item">
           <span class="label">设备名称：</span>
-          <span class="value">{{ hostname }}</span>
+          <span class="value">{{ sysInfo.hostName }}</span>
         </div>
         <div class="info-item">
           <span class="label">工作目录：</span>
-          <span class="value">{{ workdir }}</span>
+          <span class="value">{{ sysInfo.workDir }}</span>
         </div>
       </div>
     </div>
@@ -61,7 +61,7 @@
           </el-table-column>
           <el-table-column label="操作" width="60" align="center">
             <template #default="scope">
-              <el-button type="danger" link @click="handleDelete(scope.row)">{{ delDesc }}</el-button>
+              <el-button type="danger" link @click="handleDelete(scope.row)">{{ sysInfo.delDesc }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -106,10 +106,12 @@ const checkDevice = () => {
   isMobile.value = window.innerWidth < 768
 }
 
-const hostname = ref('正在加载...')
-const workdir = ref('正在加载...')
-const delDesc = ref('删除')
-const guiMode = ref(false)
+const sysInfo = ref({
+  hostName: '正在加载...',
+  workDir: '正在加载...',
+  delDesc: '删除',
+  isGuiMode: false,
+})
 
 const plainText = ref('')
 const textRef = ref(null)
@@ -130,7 +132,7 @@ const selectAllText = () => {
 
 let sse = null
 const initSSE = () => {
-  if (sse || !guiMode.value) return
+  if (sse || !sysInfo.value.isGuiMode) return
 
   sse = new EventSource('/sse')
   sse.onmessage = (e) => {
@@ -176,10 +178,7 @@ const eventIPs = (res) => {
 const fetchInfo = async () => {
   try {
     const res = await axios.get(`/info`)
-    hostname.value = res.data[0] || '未知设备'
-    workdir.value = res.data[1] || '未知目录'
-    delDesc.value = res.data[2] || '删除'
-    guiMode.value = res.data[3] == "true"
+    sysInfo.value = res.data
   } catch (err) {
     ElMessage.error('无法获取系统信息')
   }
@@ -381,10 +380,10 @@ const handleDownload = (filename) => {
 const handleDelete = async (filename) => {
   try {
     await axios.delete(`/${encodeURIComponent(filename)}`)
-    uniMsg.success(`${delDesc.value}: ${filename}`)
+    uniMsg.success(`${sysInfo.value.delDesc}: ${filename}`)
     fetchFileList()
   } catch (err) {
-    let msg = `${delDesc.value}失败: ${filename}`
+    let msg = `${sysInfo.value.delDesc}失败: ${filename}`
     if (err.response) {
       msg += ` ${err.response.data}`;
     }
