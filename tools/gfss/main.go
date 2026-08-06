@@ -146,19 +146,35 @@ func showTray(q chan os.Signal) {
 		systray.SetTitle(serverName)
 		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
 		systray.SetOnDClick(func(systray.IMenu) {
-			utils.CmdStart(localLink)
+			if !sseMgr.HasLocalConn() {
+				utils.CmdStart(localLink)
+			}
 		})
 		systray.SetOnRClick(func(menu systray.IMenu) {
 			menu.ShowMenu()
 		})
 		systray.AddMenuItem("打开界面", "").Click(func() {
-			utils.CmdStart(localLink)
+			if !sseMgr.HasLocalConn() {
+				utils.CmdStart(localLink)
+			}
 		})
 		systray.AddMenuItem("打开日志", "").Click(func() {
 			utils.ExplorerOpen(logPath)
 		})
 		systray.AddMenuItem("查看连接", "").Click(func() {
 			sseMgr.BroadcastLocal("ips", sseMgr.IPs())
+		})
+		systray.AddSeparator()
+		trashMenu := systray.AddMenuItemCheckbox("启用回收站", "", useTrash)
+		trashMenu.Click(func() {
+			if trashMenu.Checked() {
+				trashMenu.Uncheck()
+				useTrash = false
+			} else {
+				trashMenu.Check()
+				useTrash = true
+			}
+			sseMgr.Broadcast("refresh", nil)
 		})
 		systray.AddSeparator()
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
