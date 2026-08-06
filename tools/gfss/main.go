@@ -563,8 +563,8 @@ func download(c *utils.Ctx) {
 }
 
 type fileInfo struct {
-	name string
-	mod  time.Time
+	name     string
+	createAt time.Time
 }
 
 func getFiles() (files []string, err error) {
@@ -580,20 +580,28 @@ func getFiles() (files []string, err error) {
 		if !e.Type().IsRegular() {
 			continue
 		}
+
 		name := e.Name()
 		if strings.HasSuffix(name, tmpSuffix) ||
 			filepath.Join(workDir, name) == execPath {
 			continue
 		}
+
 		info, err := e.Info()
 		if err != nil || utils.IsIgnoreFile(info) {
 			continue
 		}
-		list = append(list, fileInfo{name: name, mod: info.ModTime()})
+
+		fi := fileInfo{name: name, createAt: info.ModTime()}
+		stat, ok := info.Sys().(*syscall.Win32FileAttributeData)
+		if ok {
+			fi.createAt = time.Unix(0, stat.CreationTime.Nanoseconds())
+		}
+		list = append(list, fi)
 	}
 
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].mod.After(list[j].mod)
+		return list[i].createAt.After(list[j].createAt)
 	})
 
 	for _, it := range list {
