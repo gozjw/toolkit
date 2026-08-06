@@ -231,7 +231,10 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func setWorkDir() {
-	dir, _ := utils.IsDirExist(utils.NormalizePath(workDir))
+	var dir string
+	if workDir != "" {
+		dir, _ = utils.IsDirExist(utils.NormalizePath(workDir))
+	}
 
 	arg0 := flag.Arg(0)
 	if dir == "" && arg0 != "" &&
