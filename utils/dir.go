@@ -6,18 +6,17 @@ import (
 	"strings"
 )
 
-func ParseWorkDir(workDir string) string {
-	fp, err := filepath.Abs(workDir)
-	if err != nil {
-		workDir, _ = os.Getwd()
-		return workDir
+func IsDirExist(dir string) (string, bool) {
+	if dir != "" {
+		absDir, err := filepath.Abs(dir)
+		if err == nil {
+			info, err := os.Stat(absDir)
+			if err == nil && info.IsDir() {
+				return absDir, true
+			}
+		}
 	}
-	info, err := os.Stat(fp)
-	if err != nil || !info.IsDir() {
-		workDir, _ = os.Getwd()
-		return workDir
-	}
-	return fp
+	return "", false
 }
 
 func ShrinkHomePath(absPath string) string {
@@ -37,4 +36,22 @@ func ShrinkHomePath(absPath string) string {
 	}
 
 	return strings.ReplaceAll(absNorm, string(filepath.Separator), "/")
+}
+
+func ExpandUserHome(path string) string {
+	if !strings.HasPrefix(path, "~") {
+		return path
+	}
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return path
+	}
+	remain := strings.TrimPrefix(path, "~")
+	return filepath.Join(homeDir, remain)
+}
+
+func NormalizePath(raw string) string {
+	s1 := ExpandUserHome(raw)
+	s2 := os.ExpandEnv(s1)
+	return filepath.Clean(s2)
 }

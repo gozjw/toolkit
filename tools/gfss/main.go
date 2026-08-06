@@ -40,6 +40,7 @@ var iconETag string
 
 const maxTextSize = 2 * 1024 * 1024
 const maxFileSize = 3 * 1024 * 1024 * 1024
+const defaultWorkDir = "upload"
 const appGuiMutex = `Global\FileShareServerGuiMutex_92746185032975`
 
 var serverName = "文件共享"
@@ -80,27 +81,18 @@ func main() {
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
 
-	sseMgr = utils.NewSSEManager()
-
 	if useLogFile || utils.IsGuiMode {
 		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
 		utils.LogImpl.SetOut(logPath)
 	}
 	defer utils.LogImpl.Clean()
 
+	sseMgr = utils.NewSSEManager()
+	dlTracker = NewDownloadTracker()
 	tfTracker = NewTmpFileTracker()
 	defer tfTracker.Clean()
 
-	dlTracker = NewDownloadTracker()
-
-	arg0 := flag.Arg(0)
-	if workDir == "" && arg0 != "" &&
-		!strings.HasPrefix(arg0, "-") {
-		workDir = arg0
-	}
-
-	updateWorkDir(utils.ParseWorkDir(workDir))
-
+	setWorkDir()
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
 	host, ipMsg := utils.GetIP()
@@ -236,6 +228,30 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	index(c)
+}
+
+func setWorkDir() {
+	dir, _ := utils.IsDirExist(utils.NormalizePath(workDir))
+
+	arg0 := flag.Arg(0)
+	if dir == "" && arg0 != "" &&
+		!strings.HasPrefix(arg0, "-") {
+		dir, _ = utils.IsDirExist(arg0)
+	}
+
+	if dir == "" {
+		for _, v := range []string{".", filepath.Dir(execPath)} {
+			absDir, _ := filepath.Abs(v)
+			absDir = filepath.Join(absDir, defaultWorkDir)
+			err := os.MkdirAll(absDir, 0o755)
+			if err == nil {
+				dir = absDir
+				break
+			}
+		}
+	}
+
+	updateWorkDir(dir)
 }
 
 func updateWorkDir(dir string) {
