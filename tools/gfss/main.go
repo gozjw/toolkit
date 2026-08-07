@@ -63,13 +63,14 @@ var sseMgr *utils.SSEManager
 var log = utils.Ctx{}
 
 func main() {
-	if utils.IsGuiMode {
-		ok, mutex := utils.CheckSingleInstance(appGuiMutex)
-		if !ok {
-			os.Exit(1)
+	ok, mutex := utils.CheckSingleInstance(appGuiMutex)
+	if !ok {
+		if !utils.IsGuiMode {
+			fmt.Println("已存在运行实例，请勿再次启动！")
 		}
-		defer windows.CloseHandle(mutex)
+		os.Exit(1)
 	}
+	defer windows.CloseHandle(mutex)
 
 	var useLogFile bool
 	flag.StringVar(&workDir, "d", "", "工作目录")

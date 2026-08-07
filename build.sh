@@ -4,7 +4,8 @@
 
 set -euo pipefail
 
-BUILD_DIR="/d/a/bin"
+BUILD_BIN_DIR="/d/a/bin"
+BUILD_GUI_DIR="/d/a/gui"
 PROJ_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
 
 BUILD_GUI="0"
@@ -37,7 +38,11 @@ if [[ "$(uname)" =~ (MINGW|MSYS|CYGWIN) ]]; then
   SUFFIX=".exe"
 fi
 
-mkdir -p "$BUILD_DIR"
+if [[ "${BUILD_GUI}" == "1" ]]; then
+  mkdir -p "$BUILD_GUI_DIR"
+else
+  mkdir -p "$BUILD_BIN_DIR"
+fi
 
 for dir in "${TARGETS[@]}"; do
   name=$(basename "$dir")
@@ -58,10 +63,12 @@ for dir in "${TARGETS[@]}"; do
     SYZO_FILE="$dir/resource.syso"
 
     outputName="${name}"
+    ouputDir="${BUILD_BIN_DIR}"
     if [[ "${BUILD_GUI}" == "1" ]]; then
       outputName="${name}-gui"
+      ouputDir="${BUILD_GUI_DIR}"
     fi
-    EXE_FILE="$BUILD_DIR/${outputName}${SUFFIX}"
+    EXE_FILE="${ouputDir}/${outputName}${SUFFIX}"
 
     if [ -f "$PNG_FILE" ] && [ -n "$SUFFIX" ]; then
       png2ico "$PNG_FILE"
