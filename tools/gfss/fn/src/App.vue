@@ -141,6 +141,7 @@ const initSSE = () => {
       switch (res.event) {
         case 'refresh': eventRefresh(); break;
         case 'ips': eventIPs(res); break;
+        case 'close': window.close(); break;
         default: break;
       }
     } catch (err) {

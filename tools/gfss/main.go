@@ -146,17 +146,15 @@ func showTray(q chan os.Signal) {
 		systray.SetTitle(serverName)
 		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
 		systray.SetOnDClick(func(systray.IMenu) {
-			if !sseMgr.HasLocalConn() {
-				utils.CmdStart(localLink)
-			}
+			sseMgr.BroadcastLocal("close", nil)
+			utils.CmdStart(localLink)
 		})
 		systray.SetOnRClick(func(menu systray.IMenu) {
 			menu.ShowMenu()
 		})
 		systray.AddMenuItem("打开界面", "").Click(func() {
-			if !sseMgr.HasLocalConn() {
-				utils.CmdStart(localLink)
-			}
+			sseMgr.BroadcastLocal("close", nil)
+			utils.CmdStart(localLink)
 		})
 		systray.AddMenuItem("打开日志", "").Click(func() {
 			utils.ExplorerOpen(logPath)

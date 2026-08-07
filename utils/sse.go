@@ -26,17 +26,6 @@ func NewSSEManager() *SSEManager {
 	}
 }
 
-func (t *SSEManager) HasLocalConn() bool {
-	t.Mutex.Lock()
-	defer t.Mutex.Unlock()
-	for _, c := range t.clients {
-		if IsLocalIP(c.IP) {
-			return true
-		}
-	}
-	return false
-}
-
 type SSEData struct {
 	Event string `json:"event"`
 	Data  any    `json:"data,omitempty"`
