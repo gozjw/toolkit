@@ -261,6 +261,7 @@ func setWorkDir() {
 			absDir = filepath.Join(absDir, defaultWorkDir)
 			err := os.MkdirAll(absDir, 0o755)
 			if err == nil {
+				log.Infof("mkdir:%s", absDir)
 				dir = absDir
 				break
 			}
