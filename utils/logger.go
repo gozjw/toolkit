@@ -25,10 +25,11 @@ type logImpl struct {
 	lock sync.Mutex
 	pool sync.Pool
 	out  *os.File
+	std  bool
 }
 
-func (l *logImpl) SetOut(logPath string) {
-	const maxLogSize int64 = 10 * 1024 * 1024 // 10MB
+func (t *logImpl) SetOut(logPath string, std bool) {
+	const maxLogSize int64 = 10 * 1024 * 1024
 
 	var flag int = os.O_CREATE | os.O_WRONLY
 	stat, err := os.Stat(logPath)
@@ -46,19 +47,20 @@ func (l *logImpl) SetOut(logPath string) {
 	if err != nil {
 		panic(err)
 	}
-	l.Clean()
-	l.out = file
+	t.Clean()
+	t.out = file
+	t.std = std
 }
 
-func (l *logImpl) Clean() {
-	if l.out != nil {
-		l.out.Close()
+func (t *logImpl) Clean() {
+	if t.out != nil {
+		t.out.Close()
 	}
 }
 
-func (l *logImpl) output(calldepth int, level string, id string, params ...any) {
-	var logBuf = l.pool.Get().(*bytes.Buffer)
-	defer l.pool.Put(logBuf)
+func (t *logImpl) output(calldepth int, level string, id string, params ...any) {
+	var logBuf = t.pool.Get().(*bytes.Buffer)
+	defer t.pool.Put(logBuf)
 
 	logBuf.Reset()
 	logBuf.WriteString(time.Now().Format("2006-01-02 15:04:05|"))
@@ -95,12 +97,12 @@ func (l *logImpl) output(calldepth int, level string, id string, params ...any) 
 
 	logBuf.WriteString("\n")
 
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	if l.out != nil {
-		l.out.Write(logBuf.Bytes())
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	if t.out != nil {
+		t.out.Write(logBuf.Bytes())
 	}
-	if !IsGuiMode {
+	if t.std {
 		os.Stdout.Write(logBuf.Bytes())
 	}
 }

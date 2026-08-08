@@ -8,20 +8,7 @@ BUILD_BIN_DIR="/d/a/bin"
 BUILD_GUI_DIR="/d/a/gui"
 PROJ_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
 
-BUILD_GUI="0"
-TARGET_NAME=""
-
-for arg in "$@"; do
-  if [[ "$arg" == "-g" ]]; then
-    BUILD_GUI="1"
-  else
-    # 第一个非-g参数作为目标名
-    if [[ -z "$TARGET_NAME" ]]; then
-      TARGET_NAME="$arg"
-    fi
-  fi
-done
-
+TARGET_NAME="${1:-}"
 if [ -z "$TARGET_NAME" ]; then
   mapfile -t TARGETS < <(find "$PROJ_DIR/tools" -mindepth 1 -maxdepth 1 -type d)
 else
@@ -38,11 +25,8 @@ if [[ "$(uname)" =~ (MINGW|MSYS|CYGWIN) ]]; then
   SUFFIX=".exe"
 fi
 
-if [[ "${BUILD_GUI}" == "1" ]]; then
-  mkdir -p "$BUILD_GUI_DIR"
-else
-  mkdir -p "$BUILD_BIN_DIR"
-fi
+mkdir -p "$BUILD_GUI_DIR"
+mkdir -p "$BUILD_BIN_DIR"
 
 for dir in "${TARGETS[@]}"; do
   name=$(basename "$dir")
@@ -58,17 +42,18 @@ for dir in "${TARGETS[@]}"; do
       cp -f "$dir/fn/dist/index.html" "$dir/index.html"
     fi
 
+    BUILD_GUI="0"
     PNG_FILE="$dir/app.png"
     ICON_FILE="$dir/app.ico"
     SYZO_FILE="$dir/resource.syso"
+    README_File="$dir/README.md"
 
-    outputName="${name}"
-    ouputDir="${BUILD_BIN_DIR}"
-    if [[ "${BUILD_GUI}" == "1" ]]; then
-      outputName="${name}-gui"
-      ouputDir="${BUILD_GUI_DIR}"
+    if [[ -f "$README_File" ]]; then
+      read -r line < "$README_File"
+      if [[ "$line" == *gui* ]]; then
+        BUILD_GUI="1"
+      fi
     fi
-    EXE_FILE="${ouputDir}/${outputName}${SUFFIX}"
 
     if [ -f "$PNG_FILE" ] && [ -n "$SUFFIX" ]; then
       png2ico "$PNG_FILE"
@@ -76,9 +61,12 @@ for dir in "${TARGETS[@]}"; do
     fi
 
     LDFLAGS="-s -w"
-    if [[ "$SUFFIX" == ".exe" && "$BUILD_GUI" == "1" ]]; then
-      LDFLAGS+=" -H windowsgui -X toolkit/utils.GuiMode=1"
+    ouputDir="${BUILD_BIN_DIR}"
+    if [[ "${BUILD_GUI}" == "1" ]]; then
+      LDFLAGS+=" -H windowsgui"
+      ouputDir="${BUILD_GUI_DIR}"
     fi
+    EXE_FILE="${ouputDir}/${name}${SUFFIX}"
 
     (
       cd "$PROJ_DIR"

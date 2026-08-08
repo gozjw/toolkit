@@ -8,9 +8,6 @@ import (
 	"golang.org/x/sys/windows"
 )
 
-var GuiMode string
-var IsGuiMode = GuiMode == "1"
-
 var (
 	kernel32                  = syscall.NewLazyDLL("kernel32.dll")
 	procGetStdHandle          = kernel32.NewProc("GetStdHandle")
@@ -22,12 +19,6 @@ var (
 	shBrowseForFolder   = shell32.NewProc("SHBrowseForFolderW")
 	shGetPathFromIDList = shell32.NewProc("SHGetPathFromIDListW")
 )
-
-func init() {
-	if isNewConsoleSession() {
-		disableQuickEditMode()
-	}
-}
 
 func isNewConsoleSession() bool {
 	var pids [2]uint32

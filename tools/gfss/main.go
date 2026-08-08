@@ -48,9 +48,9 @@ var hostName string
 var execPath string
 var workDir string
 var lastDir string
-var logPath = "false"
+var logPath string
 var useTrash bool
-var port int64
+var port int64 = 9527
 
 var textBuf bytes.Buffer
 var reqMux sync.RWMutex
@@ -63,43 +63,30 @@ var sseMgr *utils.SSEManager
 var log = utils.Ctx{}
 
 func main() {
+	flag.Parse()
 	ok, mutex := utils.CheckSingleInstance(appGuiMutex)
 	if !ok {
-		if !utils.IsGuiMode {
-			fmt.Println("已存在运行实例，请勿再次启动！")
-		}
 		os.Exit(1)
 	}
 	defer windows.CloseHandle(mutex)
 
-	var useLogFile bool
-	flag.StringVar(&workDir, "d", "", "工作目录")
-	flag.Int64Var(&port, "p", 9527, "端口号")
-	flag.BoolVar(&useLogFile, "l", false, "启用日志")
-	flag.BoolVar(&useTrash, "t", false, "启用回收站")
-	flag.Parse()
-
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
 
-	if useLogFile || utils.IsGuiMode {
-		logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
-		utils.LogImpl.SetOut(logPath)
-	}
+	logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
+	utils.LogImpl.SetOut(logPath, false)
 	defer utils.LogImpl.Clean()
 
-	if utils.IsGuiMode {
-		fp := filepath.Join(filepath.Dir(execPath), "gfss.json")
-		loadConfig(fp)
-		defer saveConfig(fp)
-	}
+	configPath := filepath.Join(filepath.Dir(execPath), "gfss.json")
+	loadConfig(configPath)
+	defer saveConfig(configPath)
 
+	setWorkDir()
 	sseMgr = utils.NewSSEManager()
 	dlTracker = NewDownloadTracker()
 	tfTracker = NewTmpFileTracker()
 	defer tfTracker.Clean()
 
-	setWorkDir()
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
 	host, ipMsg := utils.GetIP()
@@ -111,8 +98,9 @@ func main() {
 	log.Infof("网站名称：%s", serverName)
 	log.Infof("网站地址：http://%s:%d %s", host, port, ipMsg)
 	log.Infof("设备名称：%s", hostName)
+	log.Infof("配置文件：%s", configPath)
+	log.Infof("日志文件：%s", logPath)
 	log.Infof("工作目录：%s", workDir)
-	log.Infof("启用日志：%s", logPath)
 	log.Infof("启用回收站：%t", useTrash)
 	log.Info("====================================")
 
@@ -131,9 +119,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	if utils.IsGuiMode {
-		go showTray(quit)
-	}
+	go showTray(quit)
 
 	sig := <-quit
 	log.Infof("收到关闭信号: %v", sig)
@@ -256,14 +242,13 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func setWorkDir() {
 	var dir string
-	if workDir != "" {
-		dir, _ = utils.IsDirExist(utils.NormalizePath(workDir))
-	}
 
-	arg0 := flag.Arg(0)
-	if dir == "" && arg0 != "" &&
-		!strings.HasPrefix(arg0, "-") {
-		dir, _ = utils.IsDirExist(arg0)
+	argDir := flag.Arg(0)
+	if dir == "" && argDir != "" {
+		absDir, ok := utils.IsDirExist(argDir)
+		if ok {
+			dir = absDir
+		}
 	}
 
 	if dir == "" {
@@ -274,14 +259,10 @@ func setWorkDir() {
 	}
 
 	if dir == "" {
-		for _, v := range []string{".", filepath.Dir(execPath)} {
-			absDir, _ := filepath.Abs(v)
-			absDir = filepath.Join(absDir, defaultWorkDir)
-			err := os.MkdirAll(absDir, 0o755)
-			if err == nil {
-				dir = absDir
-				break
-			}
+		absDir := filepath.Join(filepath.Dir(execPath), defaultWorkDir)
+		err := os.MkdirAll(absDir, 0o755)
+		if err == nil {
+			dir = absDir
 		}
 	}
 
@@ -289,8 +270,9 @@ func setWorkDir() {
 }
 
 type Config struct {
-	WorkDir string `json:"workDir"`
-	Text    string `json:"text"`
+	WorkDir  string `json:"workDir"`
+	UseTrash bool   `json:"useTrash"`
+	Text     string `json:"text"`
 }
 
 func loadConfig(fp string) {
@@ -305,14 +287,16 @@ func loadConfig(fp string) {
 	reqMux.Lock()
 	defer reqMux.Unlock()
 	lastDir = cfg.WorkDir
+	useTrash = cfg.UseTrash
 	textBuf.Reset()
 	textBuf.Write([]byte(cfg.Text))
 }
 
 func saveConfig(fp string) {
 	buf, err := json.MarshalIndent(&Config{
-		WorkDir: workDir,
-		Text:    textBuf.String(),
+		WorkDir:  workDir,
+		UseTrash: useTrash,
+		Text:     textBuf.String(),
 	}, "", "  ")
 	if err != nil {
 		return
@@ -321,18 +305,16 @@ func saveConfig(fp string) {
 }
 
 type InfoRsp struct {
-	HostName  string `json:"hostName"`
-	WorkDir   string `json:"workDir"`
-	DelDesc   string `json:"delDesc"`
-	IsGuiMode bool   `json:"isGuiMode"`
+	HostName string `json:"hostName"`
+	WorkDir  string `json:"workDir"`
+	DelDesc  string `json:"delDesc"`
 }
 
 func info(c *utils.Ctx) {
 	var rsp = InfoRsp{
-		HostName:  hostName,
-		WorkDir:   utils.ShrinkHomePath(workDir),
-		DelDesc:   "删除",
-		IsGuiMode: utils.IsGuiMode,
+		HostName: hostName,
+		WorkDir:  utils.ShrinkHomePath(workDir),
+		DelDesc:  "删除",
 	}
 	if useTrash {
 		rsp.DelDesc = "移除"

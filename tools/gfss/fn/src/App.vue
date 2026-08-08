@@ -110,7 +110,6 @@ const sysInfo = ref({
   hostName: '正在加载...',
   workDir: '正在加载...',
   delDesc: '删除',
-  isGuiMode: false,
 })
 
 const plainText = ref('')
@@ -132,7 +131,7 @@ const selectAllText = () => {
 
 let sse = null
 const initSSE = () => {
-  if (sse || !sysInfo.value.isGuiMode) return
+  if (sse) return
 
   sse = new EventSource('/sse')
   sse.onmessage = (e) => {
