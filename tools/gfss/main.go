@@ -48,6 +48,7 @@ var hostName string
 var execPath string
 var workDir string
 var showDir string
+var lastDir string
 var logPath = "false"
 var useTrash bool
 var port int64
@@ -87,6 +88,12 @@ func main() {
 		utils.LogImpl.SetOut(logPath)
 	}
 	defer utils.LogImpl.Clean()
+
+	if utils.IsGuiMode {
+		fp := filepath.Join(filepath.Dir(execPath), "gfss.json")
+		loadConfig(fp)
+		defer saveConfig(fp)
+	}
 
 	sseMgr = utils.NewSSEManager()
 	dlTracker = NewDownloadTracker()
@@ -256,6 +263,13 @@ func setWorkDir() {
 	}
 
 	if dir == "" {
+		absDir, ok := utils.IsDirExist(lastDir)
+		if ok {
+			dir = absDir
+		}
+	}
+
+	if dir == "" {
 		for _, v := range []string{".", filepath.Dir(execPath)} {
 			absDir, _ := filepath.Abs(v)
 			absDir = filepath.Join(absDir, defaultWorkDir)
@@ -276,6 +290,38 @@ func updateWorkDir(dir string) {
 	}
 	workDir = dir
 	showDir = utils.ShrinkHomePath(workDir)
+}
+
+type Config struct {
+	WorkDir string `json:"workDir"`
+	Text    string `json:"text"`
+}
+
+func loadConfig(fp string) {
+	data, err := os.ReadFile(fp)
+	if err != nil {
+		return
+	}
+	var cfg Config
+	if err := json.Unmarshal(data, &cfg); err != nil {
+		return
+	}
+	reqMux.Lock()
+	defer reqMux.Unlock()
+	lastDir = cfg.WorkDir
+	textBuf.Reset()
+	textBuf.Write([]byte(cfg.Text))
+}
+
+func saveConfig(fp string) {
+	buf, err := json.MarshalIndent(&Config{
+		WorkDir: workDir,
+		Text:    textBuf.String(),
+	}, "", "  ")
+	if err != nil {
+		return
+	}
+	os.WriteFile(fp, buf, 0o644)
 }
 
 type InfoRsp struct {
