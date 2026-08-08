@@ -132,6 +132,7 @@ func showTray(q chan os.Signal) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
+	utils.CmdStart(localLink)
 	systray.Run(func() {
 		systray.SetIcon(iconData)
 		systray.SetTitle(serverName)
