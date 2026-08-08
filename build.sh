@@ -5,7 +5,6 @@
 set -euo pipefail
 
 BUILD_BIN_DIR="/d/a/bin"
-BUILD_GUI_DIR="/d/a/gui"
 PROJ_DIR="$(cd "$(dirname "${BASH_SOURCE}")" && pwd)"
 
 TARGET_NAME="${1:-}"
@@ -25,7 +24,6 @@ if [[ "$(uname)" =~ (MINGW|MSYS|CYGWIN) ]]; then
   SUFFIX=".exe"
 fi
 
-mkdir -p "$BUILD_GUI_DIR"
 mkdir -p "$BUILD_BIN_DIR"
 
 for dir in "${TARGETS[@]}"; do
@@ -64,7 +62,7 @@ for dir in "${TARGETS[@]}"; do
     ouputDir="${BUILD_BIN_DIR}"
     if [[ "${BUILD_GUI}" == "1" ]]; then
       LDFLAGS+=" -H windowsgui"
-      ouputDir="${BUILD_GUI_DIR}"
+      ouputDir="${BUILD_BIN_DIR}/${name}"
     fi
     EXE_FILE="${ouputDir}/${name}${SUFFIX}"
 
