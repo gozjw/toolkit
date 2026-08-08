@@ -47,7 +47,6 @@ var serverName = "文件共享"
 var hostName string
 var execPath string
 var workDir string
-var showDir string
 var lastDir string
 var logPath = "false"
 var useTrash bool
@@ -183,11 +182,16 @@ func showTray(q chan os.Signal) {
 		systray.AddSeparator()
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
 			dir := utils.SelectFolder("请选择")
-			if dir != "" {
-				updateWorkDir(dir)
-				sseMgr.Broadcast("refresh", nil)
-				log.Infof("workDir:%s", workDir)
+			if dir == "" {
+				return
 			}
+			absDir, err := filepath.Abs(dir)
+			if err != nil {
+				return
+			}
+			workDir = absDir
+			sseMgr.Broadcast("refresh", nil)
+			log.Infof("workDir:%s", workDir)
 		})
 		systray.AddMenuItem("打开文件夹", "").Click(func() {
 			utils.ExplorerOpen(workDir)
@@ -281,15 +285,7 @@ func setWorkDir() {
 		}
 	}
 
-	updateWorkDir(dir)
-}
-
-func updateWorkDir(dir string) {
-	if dir == "" {
-		return
-	}
 	workDir = dir
-	showDir = utils.ShrinkHomePath(workDir)
 }
 
 type Config struct {
@@ -334,7 +330,7 @@ type InfoRsp struct {
 func info(c *utils.Ctx) {
 	var rsp = InfoRsp{
 		HostName:  hostName,
-		WorkDir:   showDir,
+		WorkDir:   utils.ShrinkHomePath(workDir),
 		DelDesc:   "删除",
 		IsGuiMode: utils.IsGuiMode,
 	}
