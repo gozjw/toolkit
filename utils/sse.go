@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"sort"
+	"slices"
 	"sync"
 	"time"
 )
@@ -82,8 +82,8 @@ func (t *SSEManager) IPs() (list []SSEClientRsp) {
 			IsLocal:  IsLocalIP(c.IP),
 		})
 	}
-	sort.Slice(list, func(i, j int) bool {
-		return list[i].createAt.After(list[j].createAt)
+	slices.SortFunc(list, func(a, b SSEClientRsp) int {
+		return b.createAt.Compare(a.createAt)
 	})
 	return
 }

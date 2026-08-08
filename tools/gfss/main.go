@@ -6,7 +6,6 @@ import (
 	_ "embed"
 	"encoding/json"
 	"errors"
-	"flag"
 	"fmt"
 	"io"
 	"mime"
@@ -63,7 +62,6 @@ var sseMgr *utils.SSEManager
 var log = utils.Ctx{}
 
 func main() {
-	flag.Parse()
 	ok, mutex := utils.CheckSingleInstance(appGuiMutex)
 	if !ok {
 		os.Exit(1)
@@ -243,9 +241,8 @@ func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func setWorkDir() {
 	var dir string
 
-	argDir := flag.Arg(0)
-	if dir == "" && argDir != "" {
-		absDir, ok := utils.IsDirExist(argDir)
+	if dir == "" && len(os.Args) > 1 && os.Args[1] != "" {
+		absDir, ok := utils.IsDirExist(os.Args[1])
 		if ok {
 			dir = absDir
 		}
