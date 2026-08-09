@@ -53,13 +53,11 @@ func ExplorerOpen(path string) {
 }
 
 func CmdStart(url string) {
-	go func() {
-		cmd := exec.Command("cmd", "/c", "start", url)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			CreationFlags: 0x08000000,
-		}
-		cmd.Start()
-	}()
+	cmd := exec.Command("cmd", "/c", "start", url)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		CreationFlags: 0x08000000,
+	}
+	cmd.Start()
 }
 
 // 单实例锁，通过内核互斥体 Mutex 实现只允许运行一个程序实例
