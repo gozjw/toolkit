@@ -117,7 +117,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	go showTray(quit)
+	go showTray(host, quit)
 
 	sig := <-quit
 	log.Infof("收到关闭信号: %v", sig)
@@ -127,11 +127,11 @@ func main() {
 	server.Shutdown(ctx)
 }
 
-func showTray(q chan os.Signal) {
+func showTray(host string, q chan os.Signal) {
 	// 防止右键不显示菜单，需要禁止 Go 调度器切换系统线程
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	localLink := fmt.Sprintf("http://127.0.0.1:%d", port)
+	localLink := fmt.Sprintf("http://%s:%d", host, port)
 	utils.CmdStart(localLink)
 	systray.Run(func() {
 		systray.SetIcon(iconData)

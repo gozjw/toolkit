@@ -33,7 +33,7 @@ func GetIP() (string, string) {
 			}
 		}
 	}
-	return "localhost", "（未联网）"
+	return "127.0.0.1", "（未联网）"
 }
 
 // 获取所有处于LISTENING的TCP端口集合
