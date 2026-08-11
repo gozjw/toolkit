@@ -66,7 +66,7 @@ func NewRouter() *Router {
 	return &Router{}
 }
 
-func splitPath(p string) (segs []string) {
+func (r *Router) splitPath(p string) (segs []string) {
 	if p == "/" {
 		return []string{"/"}
 	}
@@ -118,7 +118,7 @@ func (r *Route) match(reqSegs []string) (map[string]string, bool) {
 func (r *Router) addRoute(method, path string, h HandlerFunc) {
 	r.routes = append(r.routes, &Route{
 		method:   method,
-		segments: splitPath(path),
+		segments: r.splitPath(path),
 		handler:  h,
 	})
 }
@@ -148,7 +148,7 @@ func (ro *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	reqMethod := r.Method
-	reqSeg := splitPath(r.URL.Path)
+	reqSeg := ro.splitPath(r.URL.Path)
 
 	var hitRoute *Route
 
