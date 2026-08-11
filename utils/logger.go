@@ -3,7 +3,6 @@ package utils
 import (
 	"bytes"
 	"fmt"
-	"net/http"
 	"os"
 	"path"
 	"runtime"
@@ -105,34 +104,4 @@ func (t *logImpl) output(calldepth int, level string, id string, params ...any) 
 	if t.std {
 		os.Stdout.Write(logBuf.Bytes())
 	}
-}
-
-type Ctx struct {
-	W  http.ResponseWriter
-	R  *http.Request
-	ID string
-}
-
-func (t *Ctx) Log(calldepth int, level string, params ...any) {
-	LogImpl.output(2+calldepth, level, t.ID, params...)
-}
-
-func (t *Ctx) Logf(calldepth int, level string, format string, params ...any) {
-	LogImpl.output(2+calldepth, level, t.ID, fmt.Sprintf(format, params...))
-}
-
-func (t *Ctx) Info(params ...any) {
-	LogImpl.output(2, "inf", t.ID, params...)
-}
-
-func (t *Ctx) Infof(format string, params ...any) {
-	LogImpl.output(2, "inf", t.ID, fmt.Sprintf(format, params...))
-}
-
-func (t *Ctx) Error(params ...any) {
-	LogImpl.output(2, "err", t.ID, params...)
-}
-
-func (t *Ctx) Errorf(format string, params ...any) {
-	LogImpl.output(2, "err", t.ID, fmt.Sprintf(format, params...))
 }

@@ -213,7 +213,7 @@ const sendText = async () => {
   } catch (err) {
     let msg = `发送失败`
     if (err.response) {
-      msg += `：${err.response.data}`;
+      msg += `：${err.response.data.msg}`;
     }
     ElMessage.error(msg)
   }
@@ -226,7 +226,7 @@ const fetchFileList = async () => {
   } catch (err) {
     let msg = `获取列表失败`
     if (err.response) {
-      msg += `：${err.response.data}`;
+      msg += `：${err.response.data.msg}`;
     }
     ElMessage.error(msg)
   }
@@ -349,7 +349,7 @@ const submitUpload = async () => {
   } catch (err) {
     let msg = `上传失败`
     if (err.response) {
-      msg += `：${err.response.data}`;
+      msg += `：${err.response.data.msg}`;
     }
     ElMessage.error(msg)
   } finally {
@@ -380,7 +380,7 @@ const handleDelete = async (filename) => {
   } catch (err) {
     let msg = `${sysInfo.value.delDesc}失败: ${filename}`
     if (err.response) {
-      msg += ` ${err.response.data}`;
+      msg += ` ${err.response.data.msg}`;
     }
     ElMessage.error(msg)
   }

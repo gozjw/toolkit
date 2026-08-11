@@ -92,6 +92,18 @@ func main() {
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(iconData), true)
 
+	router := utils.NewRouter()
+	router.GET("/", index)
+	router.GET("/favicon.ico", favicon)
+	router.GET("/sse", sseMgr.SSE)
+	router.GET("/info", info)
+	router.GET("/text", text)
+	router.GET("/list", list)
+	router.GET("/dl/:file", download)
+	router.POST("/text", modText)
+	router.POST("/upload", upload)
+	router.DELETE("/:file", delFile)
+
 	log.Info("====================================")
 	log.Infof("网站名称：%s", serverName)
 	log.Infof("网站地址：http://%s:%d %s", host, port, ipMsg)
@@ -104,7 +116,7 @@ func main() {
 
 	server := &http.Server{
 		Addr:        addr,
-		Handler:     &Engine{},
+		Handler:     router,
 		IdleTimeout: 10 * time.Second,
 	}
 	go func() {
@@ -189,56 +201,6 @@ func showTray(host string, q chan os.Signal) {
 	}, func() {})
 }
 
-var ctxPool = sync.Pool{New: func() any { return &utils.Ctx{} }}
-
-type Engine struct{}
-
-func (*Engine) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var c = ctxPool.Get().(*utils.Ctx)
-	defer ctxPool.Put(c)
-	c.W, c.R = w, r
-	if idx := strings.LastIndex(r.RemoteAddr, ":"); idx != -1 {
-		c.ID = r.RemoteAddr[:idx]
-	} else {
-		c.ID = r.RemoteAddr
-	}
-	switch r.Method {
-	case http.MethodGet:
-		if r.URL.Path == "/sse" {
-			sseMgr.SSE(c)
-			return
-		} else if r.URL.Path == "/info" {
-			info(c)
-			return
-		} else if r.URL.Path == "/text" {
-			text(c)
-			return
-		} else if r.URL.Path == "/list" {
-			list(c)
-			return
-		} else if r.URL.Path == "/favicon.ico" {
-			favicon(c)
-			return
-		} else if strings.HasPrefix(r.URL.Path, "/dl/") {
-			download(c)
-			return
-		}
-	case http.MethodPost:
-		switch r.URL.Path {
-		case "/text":
-			modText(c)
-			return
-		case "/upload":
-			upload(c)
-			return
-		}
-	case http.MethodDelete:
-		delFile(c)
-		return
-	}
-	index(c)
-}
-
 func setWorkDir() {
 	var dir string
 
@@ -317,8 +279,7 @@ func info(c *utils.Ctx) {
 	if useTrash {
 		rsp.DelDesc = "移除"
 	}
-	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(c.W).Encode(rsp)
+	c.JSON(200, rsp)
 }
 
 func modText(c *utils.Ctx) {
@@ -350,32 +311,28 @@ func text(c *utils.Ctx) {
 }
 
 func delFile(c *utils.Ctx) {
-	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/"))
-	if err != nil || strings.Contains(fileName, "/") {
-		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err, fileName)
-		return
-	}
+	fileName := c.Params["file"]
 
 	fp := filepath.Join(workDir, fileName)
 	if fp == execPath {
-		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", err, fileName)
+		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", nil, fileName)
 		return
 	}
 
 	if dlTracker.IsDownloading(fileName) {
-		writeErrorRsp(c, http.StatusForbidden, "文件正在被下载", err, fileName)
+		writeErrorRsp(c, http.StatusForbidden, "文件正在被下载", nil, fileName)
 		return
 	}
 
 	if useTrash {
-		err = trash.Throw(fp)
+		err := trash.Throw(fp)
 		if err != nil {
 			writeErrorRsp(c, http.StatusInternalServerError, "放入回收站失败", err, fileName)
 			return
 		}
 		c.Info("t", fileName)
 	} else {
-		err = os.Remove(fp)
+		err := os.Remove(fp)
 		if err != nil && !errors.Is(err, os.ErrNotExist) {
 			writeErrorRsp(c, http.StatusInternalServerError, "删除文件失败", err, fileName)
 			return
@@ -406,8 +363,7 @@ func list(c *utils.Ctx) {
 		writeErrorRsp(c, http.StatusInternalServerError, "获取文件失败", err)
 		return
 	}
-	c.W.Header().Set("Content-Type", "application/json; charset=utf-8")
-	json.NewEncoder(c.W).Encode(list)
+	c.JSON(200, list)
 }
 
 func favicon(c *utils.Ctx) {
@@ -551,11 +507,7 @@ func upload(c *utils.Ctx) {
 
 func download(c *utils.Ctx) {
 	var now = time.Now()
-	fileName, err := url.PathUnescape(strings.TrimPrefix(c.R.URL.Path, "/dl/"))
-	if err != nil || strings.Contains(fileName, "/") {
-		writeErrorRsp(c, http.StatusBadRequest, "非法文件路径", nil, fileName)
-		return
-	}
+	fileName := c.Params["file"]
 
 	file, err := os.Open(filepath.Join(workDir, fileName))
 	if err != nil {
@@ -687,9 +639,10 @@ func writeErrorRsp(c *utils.Ctx, status int, msg string, err error, remarks ...s
 			c.Log(1, "err", msg, err)
 		}
 	}
-	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	c.W.WriteHeader(status)
-	c.W.Write([]byte(msg))
+	c.JSON(status, utils.Rsp{
+		Code: status,
+		Msg:  msg,
+	})
 }
 
 type TmpFileTracker struct {
