@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -116,11 +117,31 @@ func (r *Route) match(reqSegs []string) (map[string]string, bool) {
 }
 
 func (r *Router) addRoute(method, path string, h HandlerFunc) {
-	r.routes = append(r.routes, &Route{
+	newRoute := &Route{
 		method:   method,
 		segments: r.splitPath(path),
 		handler:  h,
-	})
+	}
+	score := newRoute.segScore()
+
+	idx := 0
+	for i, rt := range slices.Backward(r.routes) {
+		if rt.segScore() <= score {
+			idx = i + 1
+			break
+		}
+	}
+
+	r.routes = append(r.routes[:idx], append([]*Route{newRoute}, r.routes[idx:]...)...)
+}
+
+func (r *Route) segScore() (s int) {
+	for _, v := range r.segments {
+		if strings.HasPrefix(v, "/:") {
+			s++
+		}
+	}
+	return
 }
 
 func (ro *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
