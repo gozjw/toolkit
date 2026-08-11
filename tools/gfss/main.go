@@ -103,6 +103,11 @@ func main() {
 	router.POST("/text", modText)
 	router.POST("/upload", upload)
 	router.DELETE("/:file", delFile)
+	server := &http.Server{
+		Addr:        addr,
+		Handler:     router,
+		IdleTimeout: 10 * time.Second,
+	}
 
 	log.Info("====================================")
 	log.Infof("网站名称：%s", serverName)
@@ -114,11 +119,6 @@ func main() {
 	log.Infof("启用回收站：%t", useTrash)
 	log.Info("====================================")
 
-	server := &http.Server{
-		Addr:        addr,
-		Handler:     router,
-		IdleTimeout: 10 * time.Second,
-	}
 	go func() {
 		if err := server.ListenAndServe(); err != nil &&
 			!errors.Is(err, http.ErrServerClosed) {

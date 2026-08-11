@@ -71,8 +71,7 @@ func (r *Router) splitPath(p string) (segs []string) {
 	if p == "/" {
 		return []string{"/"}
 	}
-	parts := strings.Split(p, "/")
-	for _, s := range parts {
+	for s := range strings.SplitSeq(p, "/") {
 		if s == "" {
 			continue
 		}
@@ -105,8 +104,7 @@ func (r *Route) match(reqSegs []string) (map[string]string, bool) {
 				return nil, false
 			}
 
-			val = decoded
-			params[after] = val
+			params[after] = decoded
 			continue
 		}
 		if tpl != req {
