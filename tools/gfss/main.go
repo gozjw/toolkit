@@ -342,12 +342,6 @@ func delFile(c *utils.Ctx) {
 }
 
 func index(c *utils.Ctx) {
-	r := c.R.URL.Path
-	if r == "/" {
-		c.Info(c.R.Method, r)
-	} else {
-		c.Info("404", c.R.Method, r)
-	}
 	if c.R.Header.Get("If-None-Match") == indexETag {
 		c.W.WriteHeader(http.StatusNotModified)
 		return

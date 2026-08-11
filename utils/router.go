@@ -171,6 +171,7 @@ func (ro *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if hitRoute == nil {
+		c.Error("404", r.URL.Path)
 		c.JSON(http.StatusNotFound, Rsp{Code: 404, Msg: "not found"})
 		return
 	}
