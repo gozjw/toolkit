@@ -143,11 +143,7 @@ func (r *Route) segScore() (s int) {
 }
 
 func (ro *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var c = &Ctx{
-		W:      w,
-		R:      r,
-		Params: make(map[string]string),
-	}
+	var c = &Ctx{W: w, R: r}
 
 	defer func() {
 		if e := recover(); e != nil {

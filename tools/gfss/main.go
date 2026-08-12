@@ -88,6 +88,7 @@ func main() {
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
 	host, ipMsg := utils.GetIP()
+	link := fmt.Sprintf("http://%s:%d", host, port)
 
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(iconData), true)
@@ -111,7 +112,7 @@ func main() {
 
 	log.Info("====================================")
 	log.Infof("网站名称：%s", serverName)
-	log.Infof("网站地址：http://%s:%d %s", host, port, ipMsg)
+	log.Infof("网站地址：%s %s", link, ipMsg)
 	log.Infof("设备名称：%s", hostName)
 	log.Infof("配置文件：%s", configPath)
 	log.Infof("日志文件：%s", logPath)
@@ -129,7 +130,7 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
 
-	go showTray(host, quit)
+	go showTray(link, quit)
 
 	sig := <-quit
 	log.Infof("收到关闭信号: %v", sig)
@@ -139,24 +140,23 @@ func main() {
 	server.Shutdown(ctx)
 }
 
-func showTray(host string, q chan os.Signal) {
+func showTray(link string, q chan os.Signal) {
 	// 防止右键不显示菜单，需要禁止 Go 调度器切换系统线程
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
-	localLink := fmt.Sprintf("http://%s:%d", host, port)
-	utils.CmdStart(localLink)
+	utils.CmdStart(link)
 	systray.Run(func() {
 		systray.SetIcon(iconData)
 		systray.SetTitle(serverName)
 		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
 		systray.SetOnDClick(func(systray.IMenu) {
-			utils.CmdStart(localLink)
+			utils.CmdStart(link)
 		})
 		systray.SetOnRClick(func(menu systray.IMenu) {
 			menu.ShowMenu()
 		})
 		systray.AddMenuItem("打开界面", "").Click(func() {
-			utils.CmdStart(localLink)
+			utils.CmdStart(link)
 		})
 		systray.AddMenuItem("打开日志", "").Click(func() {
 			utils.ExplorerOpen(logPath)
