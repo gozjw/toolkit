@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 )
 
 type Ctx struct {
@@ -60,11 +61,14 @@ type Route struct {
 }
 
 type Router struct {
-	routes []*Route
+	routes  []*Route
+	ctxPool sync.Pool
 }
 
 func NewRouter() *Router {
-	return &Router{}
+	return &Router{
+		ctxPool: sync.Pool{New: func() any { return &Ctx{Params: make(map[string]string)} }},
+	}
 }
 
 func (r *Router) splitPath(p string) (segs []string) {
@@ -80,11 +84,10 @@ func (r *Router) splitPath(p string) (segs []string) {
 	return
 }
 
-func (r *Route) match(reqSegs []string) (map[string]string, bool) {
+func (r *Route) match(reqSegs []string, params map[string]string) bool {
 	if len(r.segments) != len(reqSegs) {
-		return nil, false
+		return false
 	}
-	params := make(map[string]string)
 
 	for i, tpl := range r.segments {
 		req := reqSegs[i]
@@ -92,26 +95,26 @@ func (r *Route) match(reqSegs []string) (map[string]string, bool) {
 		if after, ok := strings.CutPrefix(tpl, "/:"); ok {
 			val := req[1:]
 			if len(val) == 0 {
-				return nil, false
+				return false
 			}
 
 			decoded, err := url.PathUnescape(val)
 			if err != nil {
-				return nil, false
+				return false
 			}
 
 			if strings.ContainsAny(decoded, "/\\") {
-				return nil, false
+				return false
 			}
 
 			params[after] = decoded
 			continue
 		}
 		if tpl != req {
-			return nil, false
+			return false
 		}
 	}
-	return params, true
+	return true
 }
 
 func (r *Router) addRoute(method, path string, h HandlerFunc) {
@@ -143,7 +146,12 @@ func (r *Route) segScore() (s int) {
 }
 
 func (ro *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var c = &Ctx{W: w, R: r}
+	var c = ro.ctxPool.Get().(*Ctx)
+	defer func() {
+		clear(c.Params)
+		ro.ctxPool.Put(c)
+	}()
+	c.W, c.R = w, r
 
 	defer func() {
 		if e := recover(); e != nil {
@@ -171,10 +179,8 @@ func (ro *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if rt.method != reqMethod {
 			continue
 		}
-		pm, ok := rt.match(reqSeg)
-		if ok {
+		if rt.match(reqSeg, c.Params) {
 			hitRoute = rt
-			c.Params = pm
 			break
 		}
 	}
