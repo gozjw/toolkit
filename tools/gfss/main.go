@@ -311,7 +311,7 @@ func text(c *utils.Ctx) {
 }
 
 func delFile(c *utils.Ctx) {
-	fileName := c.Params["file"]
+	fileName := c.GetParam("file")
 
 	fp := filepath.Join(workDir, fileName)
 	if fp == execPath {
@@ -501,7 +501,7 @@ func upload(c *utils.Ctx) {
 
 func download(c *utils.Ctx) {
 	var now = time.Now()
-	fileName := c.Params["file"]
+	fileName := c.GetParam("file")
 
 	file, err := os.Open(filepath.Join(workDir, fileName))
 	if err != nil {
