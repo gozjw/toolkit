@@ -299,8 +299,7 @@ func joinPath(a, b string) string {
 		return a
 	}
 	a = strings.TrimSuffix(a, "/")
-	b = strings.TrimPrefix(b, "/")
-	b = strings.TrimSuffix(b, "/")
+	b = strings.Trim(b, "/")
 	return a + "/" + b
 }
 
