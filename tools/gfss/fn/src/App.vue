@@ -1,6 +1,14 @@
 <template>
   <div class="transfer-container">
     <div class="info-card">
+      <div class="qrcode-btn-wrap">
+        <el-button circle class="qrcode-btn" size="small" :icon="Share" />
+        <div class="qrcode-tip">
+          <canvas ref="qrCanvasRef"></canvas>
+          <div class="qr-desc">扫码访问本页面</div>
+        </div>
+      </div>
+
       <div class="theme-switch">
         <el-switch v-model="isDark" size="small" inline-prompt :active-icon="Moon" :inactive-icon="Sunny" />
       </div>
@@ -85,12 +93,15 @@
 
 <script setup>
 import { ref, nextTick, computed, onMounted, onUnmounted } from 'vue'
-import { Sunny, Moon, Refresh, Upload, UploadFilled } from '@element-plus/icons-vue'
+import { Sunny, Moon, Refresh, Upload, UploadFilled, Share } from '@element-plus/icons-vue'
 import { useDark } from '@vueuse/core'
 import { createUniMsg } from '@/utils/unimsg'
 import axios from 'axios'
+import QRCode from 'qrcode'
 
 const uniMsg = createUniMsg()
+
+const qrCanvasRef = ref(null)
 
 const isDark = useDark({
   // initialValue: 'light',
@@ -126,6 +137,19 @@ const ipList = ref([])
 const selectAllText = () => {
   if (textRef.value) {
     textRef.value.select()
+  }
+}
+
+const generateQrCode = async () => {
+  if (!qrCanvasRef.value) return
+  const url = window.location.origin + window.location.pathname
+  try {
+    await QRCode.toCanvas(qrCanvasRef.value, url, {
+      width: 160,
+      margin: 1
+    })
+  } catch (err) {
+    console.error('二维码生成失败', err)
   }
 }
 
@@ -388,13 +412,16 @@ const handleDelete = async (filename) => {
 
 window.addEventListener("beforeunload", () => { closeSSE() });
 
-onMounted(() => {
+onMounted(async () => {
   fetchInfo().then(() => {
     initSSE();
   });
   fetchText();
   fetchFileList();
   checkDevice();
+  nextTick(() => {
+    generateQrCode()
+  })
   window.addEventListener('resize', checkDevice)
 })
 
@@ -421,6 +448,46 @@ onUnmounted(() => {
   border-radius: 6px;
   padding: 10px 14px;
   font-size: 13px;
+}
+
+.qrcode-btn {
+  width: 20px;
+  height: 20px;
+}
+
+.qrcode-btn-wrap {
+  position: absolute;
+  top: 8px;
+  right: 50px;
+  z-index: 10;
+}
+
+.qrcode-tip {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 999;
+  background: var(--el-fill-color-blank);
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.qrcode-btn-wrap:hover .qrcode-tip {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.qr-desc {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--el-text-color-secondary);
+  text-align: center;
 }
 
 .theme-switch {
