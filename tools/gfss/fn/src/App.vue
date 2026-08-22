@@ -62,7 +62,7 @@
             </template>
             <template #default="scope">
               <el-link type="primary" :class="['file-name-link', { 'red-file-name': clickedFiles.has(scope.row) }]"
-                @click="handleDownload(scope.row)" underline="never">
+                @click="!sysInfo.noDownload && handleDownload(scope.row)" underline="never">
                 {{ scope.row }}
               </el-link>
             </template>
@@ -413,11 +413,10 @@ const handleDelete = async (filename) => {
 window.addEventListener("beforeunload", () => { closeSSE() });
 
 onMounted(async () => {
-  fetchInfo().then(() => {
-    initSSE();
-  });
+  fetchInfo();
   fetchText();
   fetchFileList();
+  initSSE();
   checkDevice();
   nextTick(() => {
     generateQrCode()

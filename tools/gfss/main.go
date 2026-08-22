@@ -49,6 +49,7 @@ var workDir string
 var lastDir string
 var logPath string
 var useTrash bool
+var noDownload bool
 var port int64 = 9527
 
 var textBuf bytes.Buffer
@@ -165,6 +166,17 @@ func showTray(link string, q chan os.Signal) {
 			sseMgr.BroadcastLocal("ips", sseMgr.IPs())
 		})
 		systray.AddSeparator()
+		downloadMenu := systray.AddMenuItemCheckbox("禁止下载", "", noDownload)
+		downloadMenu.Click(func() {
+			if downloadMenu.Checked() {
+				downloadMenu.Uncheck()
+				noDownload = false
+			} else {
+				downloadMenu.Check()
+				noDownload = true
+			}
+			sseMgr.Broadcast("refresh", nil)
+		})
 		trashMenu := systray.AddMenuItemCheckbox("启用回收站", "", useTrash)
 		trashMenu.Click(func() {
 			if trashMenu.Checked() {
@@ -230,9 +242,10 @@ func setWorkDir() {
 }
 
 type Config struct {
-	WorkDir  string `json:"workDir"`
-	UseTrash bool   `json:"useTrash"`
-	Text     string `json:"text"`
+	WorkDir    string `json:"workDir"`
+	Text       string `json:"text"`
+	UseTrash   bool   `json:"useTrash"`
+	NoDownload bool   `json:"noDownload"`
 }
 
 func loadConfig(fp string) {
@@ -248,15 +261,17 @@ func loadConfig(fp string) {
 	defer reqMux.Unlock()
 	lastDir = cfg.WorkDir
 	useTrash = cfg.UseTrash
+	noDownload = cfg.NoDownload
 	textBuf.Reset()
 	textBuf.Write([]byte(cfg.Text))
 }
 
 func saveConfig(fp string) {
 	buf, err := json.MarshalIndent(&Config{
-		WorkDir:  workDir,
-		UseTrash: useTrash,
-		Text:     textBuf.String(),
+		WorkDir:    workDir,
+		Text:       textBuf.String(),
+		UseTrash:   useTrash,
+		NoDownload: noDownload,
 	}, "", "  ")
 	if err != nil {
 		return
@@ -265,16 +280,18 @@ func saveConfig(fp string) {
 }
 
 type InfoRsp struct {
-	HostName string `json:"hostName"`
-	WorkDir  string `json:"workDir"`
-	DelDesc  string `json:"delDesc"`
+	HostName   string `json:"hostName"`
+	WorkDir    string `json:"workDir"`
+	DelDesc    string `json:"delDesc"`
+	NoDownload bool   `json:"noDownload"`
 }
 
 func info(c *utils.Ctx) {
 	var rsp = InfoRsp{
-		HostName: hostName,
-		WorkDir:  utils.ShrinkHomePath(workDir),
-		DelDesc:  "删除",
+		HostName:   hostName,
+		WorkDir:    utils.ShrinkHomePath(workDir),
+		DelDesc:    "删除",
+		NoDownload: noDownload,
 	}
 	if useTrash {
 		rsp.DelDesc = "移除"
@@ -500,6 +517,11 @@ func upload(c *utils.Ctx) {
 }
 
 func download(c *utils.Ctx) {
+	if noDownload {
+		writeErrorRsp(c, http.StatusForbidden, "禁止下载", nil, "")
+		return
+	}
+
 	var now = time.Now()
 	fileName := c.GetParam("file")
 
