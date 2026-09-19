@@ -61,8 +61,10 @@
               <span>文件列表 (共 {{ fileList.length }} 个文件)</span>
             </template>
             <template #default="scope">
-              <el-link type="primary" :class="['file-name-link', { 'red-file-name': clickedFiles.has(scope.row) }]"
-                @click="!sysInfo.noDownload && handleDownload(scope.row)" underline="never">
+              <el-link type="primary" :class="['file-name-link', {
+                'no-download-file-name': sysInfo.noDownload,
+                'red-file-name': !sysInfo.noDownload && clickedFiles.has(scope.row)
+              }]" @click="!sysInfo.noDownload && handleDownload(scope.row)" underline="never">
                 {{ scope.row }}
               </el-link>
             </template>
@@ -603,6 +605,11 @@ onUnmounted(() => {
 
 .red-file-name {
   color: var(--el-color-danger) !important;
+}
+
+.no-download-file-name {
+  color: var(--el-text-color-info) !important;
+  cursor: default;
 }
 
 @media (max-width: 768px) {
