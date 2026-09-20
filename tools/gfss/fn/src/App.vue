@@ -28,7 +28,7 @@
     <div class="main-content">
       <div class="left-panel">
         <div class="text-section">
-          <el-input v-model="plainText" type="textarea" :rows="isMobile ? 6 : 12" placeholder="传输文本，双击全选..." clearable
+          <el-input v-model="plainText" type="textarea" :rows="isMobile ? 6 : 14" placeholder="传输文本，双击全选..." clearable
             @dblclick="selectAllText" ref="textRef" />
           <div class="btn-group">
             <el-button type="primary" :icon="Refresh" :loading="isRefreshing" @click="refresh">刷 新</el-button>
