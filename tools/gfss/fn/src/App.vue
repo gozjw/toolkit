@@ -63,8 +63,8 @@
             <template #default="scope">
               <el-link type="primary" :class="['file-name-link', {
                 'no-download-file-name': sysInfo.noDownload,
-                'red-file-name': !sysInfo.noDownload && clickedFiles.has(scope.row)
-              }]" @click="!sysInfo.noDownload && handleDownload(scope.row)" underline="never">
+                'red-file-name': clickedFiles.has(scope.row),
+              }]" @click="handleDownload(scope.row)" underline="never">
                 {{ scope.row }}
               </el-link>
             </template>
@@ -388,6 +388,7 @@ const submitUpload = async () => {
 }
 
 const handleDownload = (filename) => {
+  if (sysInfo.value.noDownload) return
   clickedFiles.value.add(filename)
   const downloadUrl = `/dl/${encodeURIComponent(filename)}`
   const link = document.createElement('a')
@@ -603,13 +604,13 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.red-file-name {
-  color: var(--el-color-danger) !important;
-}
-
 .no-download-file-name {
   color: var(--el-text-color-info) !important;
   cursor: default;
+}
+
+.red-file-name {
+  color: var(--el-color-danger) !important;
 }
 
 @media (max-width: 768px) {
