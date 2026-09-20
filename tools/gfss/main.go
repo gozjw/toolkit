@@ -48,6 +48,7 @@ var execPath string
 var workDir string
 var lastDir string
 var logPath string
+var configPath string
 var useTrash bool
 var noDownload bool
 var port int64 = 9527
@@ -76,9 +77,9 @@ func main() {
 	utils.LogImpl.SetOut(logPath, false)
 	defer utils.LogImpl.Clean()
 
-	configPath := filepath.Join(filepath.Dir(execPath), "gfss.json")
-	loadConfig(configPath)
-	defer saveConfig(configPath)
+	configPath = filepath.Join(filepath.Dir(execPath), "gfss.json")
+	loadConfig()
+	defer saveConfig()
 
 	setWorkDir()
 	sseMgr = utils.NewSSEManager()
@@ -176,6 +177,7 @@ func showTray(link string, q chan os.Signal) {
 				noDownload = true
 			}
 			sseMgr.Broadcast("refresh", nil)
+			saveConfig()
 		})
 		trashMenu := systray.AddMenuItemCheckbox("启用回收站", "", useTrash)
 		trashMenu.Click(func() {
@@ -187,6 +189,7 @@ func showTray(link string, q chan os.Signal) {
 				useTrash = true
 			}
 			sseMgr.Broadcast("refresh", nil)
+			saveConfig()
 		})
 		systray.AddSeparator()
 		systray.AddMenuItem("更改文件夹", "").Click(func() {
@@ -201,6 +204,7 @@ func showTray(link string, q chan os.Signal) {
 			workDir = absDir
 			sseMgr.Broadcast("refresh", nil)
 			log.Infof("workDir:%s", workDir)
+			saveConfig()
 		})
 		systray.AddMenuItem("打开文件夹", "").Click(func() {
 			utils.ExplorerOpen(workDir)
@@ -248,8 +252,8 @@ type Config struct {
 	NoDownload bool   `json:"noDownload"`
 }
 
-func loadConfig(fp string) {
-	data, err := os.ReadFile(fp)
+func loadConfig() {
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		return
 	}
@@ -266,7 +270,7 @@ func loadConfig(fp string) {
 	textBuf.Write([]byte(cfg.Text))
 }
 
-func saveConfig(fp string) {
+func saveConfig() {
 	buf, err := json.MarshalIndent(&Config{
 		WorkDir:    workDir,
 		Text:       textBuf.String(),
@@ -276,7 +280,7 @@ func saveConfig(fp string) {
 	if err != nil {
 		return
 	}
-	os.WriteFile(fp, buf, 0o644)
+	os.WriteFile(configPath, buf, 0o644)
 }
 
 type InfoRsp struct {
