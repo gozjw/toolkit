@@ -12,11 +12,7 @@ import (
 	"time"
 )
 
-func init() {
-	LogImpl = &logImpl{
-		pool: sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 128)) }},
-	}
-}
+const maxLogSize int = 10 * 1024 * 1024
 
 var LogImpl *logImpl
 
@@ -25,40 +21,64 @@ type logImpl struct {
 	pool sync.Pool
 	out  *os.File
 	std  bool
+	size int
+	path string
+}
+
+func init() {
+	LogImpl = &logImpl{
+		pool: sync.Pool{New: func() any { return bytes.NewBuffer(make([]byte, 0, 128)) }},
+	}
 }
 
 func (t *logImpl) SetOut(logPath string, std bool) {
-	const maxLogSize int64 = 10 * 1024 * 1024
+	backupPath := logPath + ".1"
+	t.path = logPath
 
-	var flag int = os.O_CREATE | os.O_WRONLY
+	var size = 0
 	stat, err := os.Stat(logPath)
 	if err == nil {
-		if stat.Size() >= maxLogSize {
-			flag |= os.O_TRUNC
-		} else {
-			flag |= os.O_APPEND
+		size = int(stat.Size())
+		if size >= maxLogSize {
+			os.Remove(backupPath)
+			os.Rename(logPath, backupPath)
+			size = 0
 		}
-	} else {
-		flag |= os.O_APPEND
 	}
 
-	file, err := os.OpenFile(logPath, flag, 0644)
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		panic(err)
+	}
+
+	t.Clean()
+	t.out = file
+	t.std = std
+	t.size = size
+}
+
+func (t *logImpl) newOut() {
+	backupPath := t.path + ".1"
+	os.Remove(backupPath)
+	os.Rename(t.path, backupPath)
+	file, err := os.OpenFile(t.path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
 	if err != nil {
 		panic(err)
 	}
 	t.Clean()
 	t.out = file
-	t.std = std
+	t.size = 0
 }
 
 func (t *logImpl) Clean() {
 	if t.out != nil {
 		t.out.Close()
+		t.out = nil
 	}
 }
 
 func (t *logImpl) output(calldepth int, level string, id string, params ...any) {
-	var logBuf = t.pool.Get().(*bytes.Buffer)
+	logBuf := t.pool.Get().(*bytes.Buffer)
 	defer t.pool.Put(logBuf)
 
 	logBuf.Reset()
@@ -99,7 +119,11 @@ func (t *logImpl) output(calldepth int, level string, id string, params ...any) 
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	if t.out != nil {
-		t.out.Write(logBuf.Bytes())
+		n, _ := t.out.Write(logBuf.Bytes())
+		t.size += n
+		if t.size >= maxLogSize {
+			t.newOut()
+		}
 	}
 	if t.std {
 		os.Stdout.Write(logBuf.Bytes())
