@@ -58,6 +58,7 @@ func (t *logImpl) SetOut(logPath string, std bool) {
 }
 
 func (t *logImpl) newOut() {
+	t.Clean()
 	backupPath := t.path + ".1"
 	os.Remove(backupPath)
 	os.Rename(t.path, backupPath)
@@ -65,7 +66,6 @@ func (t *logImpl) newOut() {
 	if err != nil {
 		panic(err)
 	}
-	t.Clean()
 	t.out = file
 	t.size = 0
 }
