@@ -96,7 +96,7 @@
 <script setup>
 import { ref, nextTick, computed, onMounted, onUnmounted } from 'vue'
 import { Sunny, Moon, Refresh, Upload, UploadFilled, Share } from '@element-plus/icons-vue'
-import { useDark } from '@vueuse/core'
+import { useTitle, useDark } from '@vueuse/core'
 import { createUniMsg } from '@/utils/unimsg'
 import axios from 'axios'
 import QRCode from 'qrcode'
@@ -104,6 +104,8 @@ import QRCode from 'qrcode'
 const uniMsg = createUniMsg()
 
 const qrCanvasRef = ref(null)
+
+const title = useTitle("文件共享")
 
 const isDark = useDark({
   // initialValue: 'light',
@@ -200,6 +202,7 @@ const fetchInfo = async () => {
   try {
     const res = await axios.get(`/info`)
     sysInfo.value = res.data
+    title.value = res.data.serviceTitle
   } catch (err) {
     ElMessage.error('无法获取系统信息')
   }

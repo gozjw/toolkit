@@ -40,9 +40,10 @@ var iconETag string
 const maxTextSize = 2 * 1024 * 1024
 const maxFileSize = 3 * 1024 * 1024 * 1024
 const defaultWorkDir = "upload"
-const appGuiMutex = `Global\FileShareServerGuiMutex_92746185032975`
+const appGuiMutex = `Global\gfssMutex_92746185032975`
 
-var serverName = "文件共享"
+var service = "gfss"
+var serviceTitle = "文件共享"
 var hostName string
 var execPath string
 var workDir string
@@ -73,11 +74,11 @@ func main() {
 	hostName, _ = os.Hostname()
 	execPath, _ = os.Executable()
 
-	logPath = filepath.Join(filepath.Dir(execPath), "gfss.log")
+	logPath = filepath.Join(filepath.Dir(execPath), service+".log")
 	utils.LogImpl.SetOut(logPath, false)
 	defer utils.LogImpl.Clean()
 
-	configPath = filepath.Join(filepath.Dir(execPath), "gfss.json")
+	configPath = filepath.Join(filepath.Dir(execPath), service+".json")
 	loadConfig()
 	defer saveConfig()
 
@@ -113,7 +114,7 @@ func main() {
 	}
 
 	log.Info("====================================")
-	log.Infof("网站名称：%s", serverName)
+	log.Infof("网站名称：%s", serviceTitle)
 	log.Infof("网站地址：%s %s", link, ipMsg)
 	log.Infof("设备名称：%s", hostName)
 	log.Infof("配置文件：%s", configPath)
@@ -149,8 +150,8 @@ func showTray(link string, q chan os.Signal) {
 	utils.CmdStart(link)
 	systray.Run(func() {
 		systray.SetIcon(iconData)
-		systray.SetTitle(serverName)
-		systray.SetTooltip(fmt.Sprintf("%s(%d)", serverName, port))
+		systray.SetTitle(serviceTitle)
+		systray.SetTooltip(fmt.Sprintf("%s(%d)", serviceTitle, port))
 		systray.SetOnDClick(func(systray.IMenu) {
 			utils.CmdStart(link)
 		})
@@ -284,18 +285,22 @@ func saveConfig() {
 }
 
 type InfoRsp struct {
-	HostName   string `json:"hostName"`
-	WorkDir    string `json:"workDir"`
-	DelDesc    string `json:"delDesc"`
-	NoDownload bool   `json:"noDownload"`
+	Service      string `json:"service"`
+	ServiceTitle string `json:"serviceTitle"`
+	HostName     string `json:"hostName"`
+	WorkDir      string `json:"workDir"`
+	DelDesc      string `json:"delDesc"`
+	NoDownload   bool   `json:"noDownload"`
 }
 
 func info(c *utils.Ctx) {
 	var rsp = InfoRsp{
-		HostName:   hostName,
-		WorkDir:    utils.ShrinkHomePath(workDir),
-		DelDesc:    "删除",
-		NoDownload: noDownload,
+		Service:      service,
+		ServiceTitle: serviceTitle,
+		HostName:     hostName,
+		WorkDir:      utils.ShrinkHomePath(workDir),
+		DelDesc:      "删除",
+		NoDownload:   noDownload,
 	}
 	if useTrash {
 		rsp.DelDesc = "移除"
