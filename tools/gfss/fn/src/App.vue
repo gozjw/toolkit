@@ -88,6 +88,7 @@
           <span v-if="scope.row.isLocal" style="color:#00B42A;font-weight:bold;">*</span>
         </template>
       </el-table-column>
+      <el-table-column prop="ua" label="设备" min-width="80" />
       <el-table-column prop="createAt" label="接入时间" min-width="80" />
     </el-table>
   </el-dialog>

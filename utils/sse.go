@@ -5,12 +5,14 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 )
 
 type SSEClient struct {
 	IP       string
+	UA       UAInfo
 	CreateAt time.Time
 	ch       chan string
 }
@@ -66,6 +68,7 @@ func (t *SSEManager) broadcast(local bool, b []byte) {
 
 type SSEClientRsp struct {
 	IP       string `json:"ip"`
+	UA       string `json:"ua"`
 	CreateAt string `json:"createAt"`
 	IsLocal  bool   `json:"isLocal"`
 	createAt time.Time
@@ -77,6 +80,7 @@ func (t *SSEManager) IPs() (list []SSEClientRsp) {
 	for _, c := range t.clients {
 		list = append(list, SSEClientRsp{
 			IP:       c.IP,
+			UA:       fmt.Sprintf("%s(%s)", c.UA.Browser, c.UA.OS),
 			CreateAt: c.CreateAt.Format("2006-01-02 15:04:05"),
 			createAt: c.CreateAt,
 			IsLocal:  IsLocalIP(c.IP),
@@ -105,6 +109,7 @@ func (t *SSEManager) SSE(c *Ctx) {
 	t.Mutex.Lock()
 	t.clients[c.W] = SSEClient{
 		IP:       c.ID,
+		UA:       ParseUserAgent(c.R.Header.Get("user-agent")),
 		ch:       ch,
 		CreateAt: time.Now(),
 	}
@@ -127,4 +132,90 @@ func (t *SSEManager) SSE(c *Ctx) {
 			flusher.Flush()
 		}
 	}
+}
+
+type UAInfo struct {
+	OS      string
+	Browser string
+}
+
+var browserRules = []struct {
+	keyword string
+	name    string
+}{
+	// App内置WebView
+	{"micromessenger", "微信内置浏览器"},
+	{"alipay", "支付宝内置浏览器"},
+	{"dingtalk", "钉钉内置浏览器"},
+	{"douyin", "抖音内置浏览器"},
+
+	// 移动端国产浏览器
+	{"miuibrowser", "小米浏览器"},
+	{"quark", "夸克浏览器"},
+	{"qqbrowser", "QQ浏览器"},
+	{"huaweibrowser", "华为浏览器"},
+	{"opbrowser", "OPPO浏览器"},
+	{"vivobrowser", "VIVO浏览器"},
+	{"360browser", "360手机浏览器"},
+	{"sogoumse", "搜狗手机浏览器"},
+
+	// PC国产套壳浏览器
+	{"360se", "360浏览器"},
+	{"360ee", "360浏览器"},
+	{"sogou", "搜狗浏览器"},
+	{"lbbrowser", "猎豹浏览器"},
+	{"2345explorer", "2345浏览器"},
+	{"cent", "百分浏览器"},
+	{"twinkstar", "星愿浏览器"},
+	{"quarkpc", "夸克PC版"},
+
+	// 国外Chromium系
+	{"edg", "Edge"},
+	{"vivaldi", "Vivaldi"},
+	{"brave", "Brave浏览器"},
+	{"chrome", "Chrome"},
+
+	// 非Chromium
+	{"firefox", "Firefox"},
+	{"safari", "Safari"},
+}
+
+var osRules = []struct {
+	keyword string
+	name    string
+}{
+	{"harmonyos", "HarmonyOS"},
+	{"android", "Android"},
+	{"iphone", "iOS"},
+	{"ipad", "iOS"},
+	{"win", "Windows"},
+	{"mac", "macOS"},
+	{"linux", "Linux"},
+}
+
+func ParseUserAgent(ua string) UAInfo {
+	info := UAInfo{
+		OS:      "未知",
+		Browser: "未知",
+	}
+	if ua == "" {
+		return info
+	}
+	uaLower := strings.ToLower(ua)
+
+	for _, rule := range browserRules {
+		if strings.Contains(uaLower, rule.keyword) {
+			info.Browser = rule.name
+			break
+		}
+	}
+
+	for _, rule := range osRules {
+		if strings.Contains(uaLower, rule.keyword) {
+			info.OS = rule.name
+			break
+		}
+	}
+
+	return info
 }
