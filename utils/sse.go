@@ -106,7 +106,7 @@ func (t *SSEManager) SSE(c *Ctx) {
 	c.W.Header().Set("Connection", "keep-alive")
 	c.W.Header().Set("X-Accel-Buffering", "no")
 
-	os, browser := ParseUserAgent(c.R.Header.Get("user-agent"))
+	os, browser := ParseUserAgent(c)
 	ch := make(chan string, 5)
 	t.Mutex.Lock()
 	t.clients[c.W] = SSEClient{
@@ -193,26 +193,33 @@ var osRules = []struct {
 	{"linux", "Linux"},
 }
 
-func ParseUserAgent(ua string) (os string, browser string) {
+func ParseUserAgent(c *Ctx) (os string, browser string) {
+	ua := c.R.Header.Get("user-agent")
 	os = "未知"
 	browser = "未知"
-	if ua == "" {
-		return
-	}
-	uaLower := strings.ToLower(ua)
+	var flag byte
+	if ua != "" {
+		uaLower := strings.ToLower(ua)
 
-	for _, rule := range browserRules {
-		if strings.Contains(uaLower, rule.keyword) {
-			browser = rule.name
-			break
+		for _, rule := range browserRules {
+			if strings.Contains(uaLower, rule.keyword) {
+				browser = rule.name
+				flag |= 0b00000001
+				break
+			}
+		}
+
+		for _, rule := range osRules {
+			if strings.Contains(uaLower, rule.keyword) {
+				os = rule.name
+				flag |= 0b00000010
+				break
+			}
 		}
 	}
 
-	for _, rule := range osRules {
-		if strings.Contains(uaLower, rule.keyword) {
-			os = rule.name
-			break
-		}
+	if flag != 0b00000011 {
+		c.Errorf("flag:%d, ua:%s, bo:%s(%s)", flag, ua, browser, os)
 	}
 	return
 }
