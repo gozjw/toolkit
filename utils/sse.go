@@ -172,7 +172,7 @@ var browserRules = []struct {
 	// 国外Chromium系
 	{"edg", "Edge"},
 	{"vivaldi", "Vivaldi"},
-	{"brave", "Brave浏览器"},
+	{"brave", "Brave"},
 	{"chrome", "Chrome"},
 
 	// 非Chromium
@@ -186,8 +186,10 @@ var osRules = []struct {
 }{
 	{"harmonyos", "HarmonyOS"},
 	{"android", "Android"},
+	{"android tv", "Android TV"},
 	{"iphone", "iOS"},
 	{"ipad", "iOS"},
+	{"ipod", "iOS"},
 	{"win", "Windows"},
 	{"mac", "macOS"},
 	{"linux", "Linux"},
