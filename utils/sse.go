@@ -12,7 +12,8 @@ import (
 
 type SSEClient struct {
 	IP       string
-	UA       UAInfo
+	OS       string
+	Browser  string
 	CreateAt time.Time
 	ch       chan string
 }
@@ -80,7 +81,7 @@ func (t *SSEManager) IPs() (list []SSEClientRsp) {
 	for _, c := range t.clients {
 		list = append(list, SSEClientRsp{
 			IP:       c.IP,
-			UA:       fmt.Sprintf("%s(%s)", c.UA.Browser, c.UA.OS),
+			UA:       fmt.Sprintf("%s(%s)", c.Browser, c.OS),
 			CreateAt: c.CreateAt.Format("2006-01-02 15:04:05"),
 			createAt: c.CreateAt,
 			IsLocal:  IsLocalIP(c.IP),
@@ -105,11 +106,13 @@ func (t *SSEManager) SSE(c *Ctx) {
 	c.W.Header().Set("Connection", "keep-alive")
 	c.W.Header().Set("X-Accel-Buffering", "no")
 
+	os, browser := ParseUserAgent(c.R.Header.Get("user-agent"))
 	ch := make(chan string, 5)
 	t.Mutex.Lock()
 	t.clients[c.W] = SSEClient{
 		IP:       c.ID,
-		UA:       ParseUserAgent(c.R.Header.Get("user-agent")),
+		OS:       os,
+		Browser:  browser,
 		ch:       ch,
 		CreateAt: time.Now(),
 	}
@@ -132,11 +135,6 @@ func (t *SSEManager) SSE(c *Ctx) {
 			flusher.Flush()
 		}
 	}
-}
-
-type UAInfo struct {
-	OS      string
-	Browser string
 }
 
 var browserRules = []struct {
@@ -195,29 +193,26 @@ var osRules = []struct {
 	{"linux", "Linux"},
 }
 
-func ParseUserAgent(ua string) UAInfo {
-	info := UAInfo{
-		OS:      "未知",
-		Browser: "未知",
-	}
+func ParseUserAgent(ua string) (os string, browser string) {
+	os = "未知"
+	browser = "未知"
 	if ua == "" {
-		return info
+		return
 	}
 	uaLower := strings.ToLower(ua)
 
 	for _, rule := range browserRules {
 		if strings.Contains(uaLower, rule.keyword) {
-			info.Browser = rule.name
+			browser = rule.name
 			break
 		}
 	}
 
 	for _, rule := range osRules {
 		if strings.Contains(uaLower, rule.keyword) {
-			info.OS = rule.name
+			os = rule.name
 			break
 		}
 	}
-
-	return info
+	return
 }
