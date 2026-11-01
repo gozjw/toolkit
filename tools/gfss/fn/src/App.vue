@@ -144,7 +144,7 @@ const ipList = ref([])
 const downloadScan = (e) => {
   const a = document.createElement('a')
   a.href = '/scan'
-  a.download = 'scan.html'
+  a.download = 'gfss_scan.html'
   document.body.appendChild(a)
   a.click()
   a.remove()

@@ -405,11 +405,12 @@ func favicon(c *utils.Ctx) {
 }
 
 func parseScan() {
+	half := 12
 	startIP := "192.168.1.1"
 	parts := strings.Split(ip, ".")
 	if len(parts) == 4 {
 		start, _ := strconv.Atoi(parts[3])
-		start -= 10
+		start -= half
 		if start <= 0 {
 			start = 1
 		}
@@ -420,12 +421,13 @@ func parseScan() {
 		fmt.Appendf(nil, "data:image/x-icon;base64,%s",
 			base64.StdEncoding.EncodeToString(iconData)))
 	scanData = bytes.ReplaceAll(scanData, []byte("{{StartIP}}"), []byte(startIP))
-	scanData = bytes.ReplaceAll(scanData, []byte("{{Count}}"), []byte("20"))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Count}}"), fmt.Append(nil, half*2))
 	scanData = bytes.ReplaceAll(scanData, []byte("{{Port}}"), fmt.Append(nil, port))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Service}}"), []byte(service))
 }
 
 func scan(c *utils.Ctx) {
-	var fileName = "scan.html"
+	var fileName = "gfss_scan.html"
 	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
 	c.W.Header().Set("X-Content-Type-Options", "nosniff")
 	c.W.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s", fileName, url.PathEscape(fileName)))

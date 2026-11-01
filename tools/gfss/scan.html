@@ -133,24 +133,25 @@
 
     function testHttp(ip, port, timeout) {
       return new Promise(resolve => {
-        const url = `http://${ip}:${port}/`;
+        const baseUrl = `http://${ip}:${port}/`;
+        const infoUrl = baseUrl + 'info';
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), timeout);
-        fetch(url, {
-          mode: 'no-cors',
-          signal: ctrl.signal,
-          cache: 'no-store'
-        }).then(() => {
-          clearTimeout(timer);
-          resolve({ ip, url, ok: true });
-        }).catch(() => {
-          clearTimeout(timer);
-          resolve({ ip, url, ok: false });
-        });
+        fetch(infoUrl, { signal: ctrl.signal, cache: 'no-store' })
+          .then(res => {
+            clearTimeout(timer);
+            return res.text();
+          })
+          .then(txt => {
+            resolve({ ip, baseUrl, ok: txt.includes('{{Service}}') });
+          })
+          .catch(err => {
+            clearTimeout(timer);
+            resolve({ ip, baseUrl, ok: false });
+          });
       });
     }
 
-    // 把 "192.168.0.90" 解析成 { seg: "192.168.0", start: 90 }
     function parseIp(startIp) {
       const parts = String(startIp).trim().split('.');
       if (parts.length !== 4) return null;
@@ -176,7 +177,6 @@
       formEl.style.display = 'none';
 
       let done = 0;
-      const CONCURRENCY = 6;
       let current = startOctet;
 
       const updateProgress = () => {
@@ -192,14 +192,14 @@
           done++;
           updateProgress();
           if (r.ok) {
-            foundUrl = r.url;
+            foundUrl = r.baseUrl;
             break;
           }
         }
       }
 
       const workers = [];
-      for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
+      for (let i = 0; i < 6; i++) workers.push(worker());
       await Promise.all(workers);
 
       scanning = false;
