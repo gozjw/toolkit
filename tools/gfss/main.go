@@ -405,22 +405,22 @@ func favicon(c *utils.Ctx) {
 }
 
 func parseScan() {
-	seg := "192.168.1"
-	start := 1
+	startIP := "192.168.1.1"
 	parts := strings.Split(ip, ".")
 	if len(parts) == 4 {
-		seg = strings.Join(parts[:3], ".")
-		start, _ = strconv.Atoi(parts[3])
+		start, _ := strconv.Atoi(parts[3])
 		start -= 10
 		if start <= 0 {
 			start = 1
 		}
+		parts[3] = strconv.Itoa(start)
+		startIP = strings.Join(parts, ".")
 	}
-	scanData = bytes.ReplaceAll(scanData, []byte("{{FaviconDataURL}}"),
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Favicon}}"),
 		fmt.Appendf(nil, "data:image/x-icon;base64,%s",
 			base64.StdEncoding.EncodeToString(iconData)))
-	scanData = bytes.ReplaceAll(scanData, []byte("{{Seg}}"), []byte(seg))
-	scanData = bytes.ReplaceAll(scanData, []byte("{{Start}}"), fmt.Append(nil, start))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{StartIP}}"), []byte(startIP))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Count}}"), []byte("20"))
 	scanData = bytes.ReplaceAll(scanData, []byte("{{Port}}"), fmt.Append(nil, port))
 }
 

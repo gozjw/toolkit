@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>文件传输</title>
-  <link rel="icon" href="{{FaviconDataURL}}">
+  <link rel="icon" href="{{Favicon}}">
   <style>
     body {
       font-family: "Microsoft YaHei", sans-serif;
@@ -16,7 +16,7 @@
 
     .container {
       max-width: 480px;
-      margin: 80px auto;
+      margin: 60px auto;
       text-align: center;
     }
 
@@ -34,9 +34,58 @@
       color: #f56c6c;
     }
 
+    .progress {
+      font-size: 13px;
+      color: #909399;
+      margin-top: 10px;
+      min-height: 18px;
+    }
+
+    .form {
+      margin-top: 16px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+      padding: 20px;
+      text-align: left;
+    }
+
+    .form .row {
+      margin-bottom: 14px;
+    }
+
+    .form label {
+      user-select: none;
+      display: block;
+      font-size: 13px;
+      color: #606266;
+      margin-bottom: 6px;
+    }
+
+    .form input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 9px 10px;
+      border: 1px solid #dcdfe6;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+    }
+
+    .form input:focus {
+      border-color: #409eff;
+    }
+
+    .form .err {
+      color: #f56c6c;
+      font-size: 13px;
+      min-height: 18px;
+      margin-bottom: 4px;
+    }
+
     button {
       user-select: none;
-      margin-top: 16px;
+      margin-top: 6px;
       background: #409eff;
       color: #fff;
       border: none;
@@ -44,6 +93,7 @@
       border-radius: 4px;
       font-size: 14px;
       cursor: pointer;
+      width: 100%;
     }
 
     button:hover {
@@ -54,20 +104,33 @@
 
 <body>
   <div class="container">
-    <div class="msg" id="msg">正在查找服务...</div>
-    <button id="retryBtn" onclick="location.reload()" style="display:none">刷新重试</button>
+    <div class="msg" id="msg"></div>
+    <div class="progress" id="progress"></div>
+    <div class="form" id="form" style="display:none">
+      <div class="row">
+        <label>起始 IP</label>
+        <input id="inputIp" type="text" value="{{StartIP}}" placeholder="例如 192.168.0.90">
+      </div>
+      <div class="row">
+        <label>扫描数量（从起始 IP 起向后扫描多少个地址）</label>
+        <input id="inputCount" type="number" value="{{Count}}" min="1" max="254">
+      </div>
+      <div class="row">
+        <label>端口</label>
+        <input id="inputPort" type="number" value="{{Port}}" min="1" max="65535">
+      </div>
+      <div class="err" id="formError"></div>
+      <button id="scanBtn" onclick="rescan()">重新打开</button>
+    </div>
   </div>
+
   <script>
-    // ========== 配置区（直接改这里） ==========
-    const SEG = '{{Seg}}';
-    const START = {{Start}};
-    const COUNT = 20;
-    const PORT = {{Port}};
     const TIMEOUT = 500;
-    const END = START + COUNT - 1;
-    // ========================================
-    let scanning = true;
+    let scanning = false;
     let foundUrl = null;
+
+    const $ = id => document.getElementById(id);
+
     function testHttp(ip, port, timeout) {
       return new Promise(resolve => {
         const url = `http://${ip}:${port}/`;
@@ -86,36 +149,102 @@
         });
       });
     }
-    async function scan() {
-      const total = COUNT;
+
+    // 把 "192.168.0.90" 解析成 { seg: "192.168.0", start: 90 }
+    function parseIp(startIp) {
+      const parts = String(startIp).trim().split('.');
+      if (parts.length !== 4) return null;
+      const nums = parts.map(p => Number(p));
+      for (const n of nums) {
+        if (!Number.isInteger(n) || n < 0 || n > 255) return null;
+      }
+      return { seg: `${nums[0]}.${nums[1]}.${nums[2]}`, start: nums[3] };
+    }
+
+    async function scan(seg, startOctet, count, port) {
+      scanning = true;
+      foundUrl = null;
+
+      const end = startOctet + count - 1;
+      const msgEl = $('msg');
+      const progEl = $('progress');
+      const formEl = $('form');
+
+      msgEl.className = 'msg';
+      msgEl.textContent = '正在打开服务...';
+      progEl.style.display = 'block';
+      formEl.style.display = 'none';
+
       let done = 0;
       const CONCURRENCY = 6;
-      let current = START;
+      let current = startOctet;
+
+      const updateProgress = () => {
+        progEl.textContent = `已扫描 ${done}/${count} 个地址（${seg}.${startOctet} ~ ${seg}.${end}）`;
+      };
+      updateProgress();
+
       async function worker() {
-        while (current <= END && scanning && !foundUrl) {
-          const ip = `${SEG}.${current}`;
+        while (current <= end && scanning && !foundUrl) {
+          const ip = `${seg}.${current}`;
           current++;
-          const r = await testHttp(ip, PORT, TIMEOUT);
+          const r = await testHttp(ip, port, TIMEOUT);
           done++;
+          updateProgress();
           if (r.ok) {
             foundUrl = r.url;
             break;
           }
         }
       }
+
       const workers = [];
       for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
       await Promise.all(workers);
+
+      scanning = false;
+
       if (foundUrl) {
         window.location.href = foundUrl;
-      } else {
-        document.getElementById('msg').className = 'msg error';
-        document.getElementById('msg').textContent =
-          `未找到服务，IP：${SEG}.${START} ~ ${SEG}.${END}，端口：${PORT}，请确认服务已启动再刷新重试`;
-        document.getElementById('retryBtn').style.display = 'inline-block';
+        return;
       }
+
+      msgEl.className = 'msg error';
+      msgEl.textContent =
+        `未找到服务，IP：${seg}.${startOctet} ~ ${seg}.${end}，端口：${port}，请确认服务已启动后修改参数重试`;
+      progEl.style.display = 'none';
+      formEl.style.display = 'block';
     }
-    window.onload = scan;
+
+    function rescan() {
+      const ipVal = $('inputIp').value;
+      const countVal = parseInt($('inputCount').value, 10);
+      const portVal = parseInt($('inputPort').value, 10);
+      const errEl = $('formError');
+      errEl.textContent = '';
+
+      const parsed = parseIp(ipVal);
+      if (!parsed) {
+        errEl.textContent = '起始 IP 格式不正确，应为类似 192.168.0.90 的形式';
+        return;
+      }
+      if (!Number.isInteger(countVal) || countVal < 1 || countVal > 254) {
+        errEl.textContent = '扫描数量需为 1 ~ 254 之间的整数';
+        return;
+      }
+      if (!Number.isInteger(portVal) || portVal < 1 || portVal > 65535) {
+        errEl.textContent = '端口需为 1 ~ 65535 之间的整数';
+        return;
+      }
+      if (parsed.start + countVal - 1 > 254) {
+        errEl.textContent = `扫描范围超出网段上限（${parsed.start} + ${countVal} - 1 = ${parsed.start + countVal - 1} > 254）`;
+        return;
+      }
+
+      scan(parsed.seg, parsed.start, countVal, portVal);
+    }
+
+    window.onload =  rescan;
   </script>
 </body>
 
