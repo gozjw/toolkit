@@ -1,15 +1,17 @@
 <template>
   <div class="transfer-container">
     <div class="info-card">
-      <div class="qrcode-btn-wrap">
-        <el-button circle class="qrcode-btn" size="small" :icon="Share" />
-        <div class="qrcode-tip">
-          <canvas ref="qrCanvasRef"></canvas>
-          <div class="qr-desc">扫码访问本页面</div>
+      <div class="title-btn-wrap">
+        <el-tooltip content="下载发现页" class="box-item" placement="bottom" v-if="!isMobile">
+          <el-button circle class="title-ico-btn" size="small" :icon="Promotion" @click="downloadScan" />
+        </el-tooltip>
+        <div class="qrcode-btn-wrap">
+          <el-button circle class="title-ico-btn" size="small" :icon="Share" />
+          <div class="qrcode-tip">
+            <canvas ref="qrCanvasRef"></canvas>
+            <div class="qr-desc">扫码访问本页面</div>
+          </div>
         </div>
-      </div>
-
-      <div class="theme-switch">
         <el-switch v-model="isDark" size="small" inline-prompt :active-icon="Moon" :inactive-icon="Sunny" />
       </div>
 
@@ -96,7 +98,7 @@
 
 <script setup>
 import { ref, nextTick, computed, onMounted, onUnmounted } from 'vue'
-import { Sunny, Moon, Refresh, Upload, UploadFilled, Share } from '@element-plus/icons-vue'
+import { Sunny, Moon, Refresh, Upload, UploadFilled, Share, Promotion } from '@element-plus/icons-vue'
 import { useTitle, useDark } from '@vueuse/core'
 import { createUniMsg } from '@/utils/unimsg'
 import axios from 'axios'
@@ -138,6 +140,15 @@ const clickedFiles = ref(new Set())
 
 const ipDialogVisible = ref(false)
 const ipList = ref([])
+
+const downloadScan = (e) => {
+  const a = document.createElement('a')
+  a.href = '/scan'
+  a.download = 'scan.html'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
 
 const selectAllText = () => {
   if (textRef.value) {
@@ -456,16 +467,19 @@ onUnmounted(() => {
   font-size: 13px;
 }
 
-.qrcode-btn {
-  width: 20px;
-  height: 20px;
-}
-
-.qrcode-btn-wrap {
+.title-btn-wrap {
   position: absolute;
   top: 8px;
-  right: 50px;
-  z-index: 10;
+  right: 14px;
+  display: flex;
+  justify-content: space-between;
+  gap: 5px;
+  align-items: center;
+}
+
+.title-ico-btn {
+  width: 20px;
+  height: 20px;
 }
 
 .qrcode-tip {
@@ -494,13 +508,6 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--el-text-color-secondary);
   text-align: center;
-}
-
-.theme-switch {
-  position: absolute;
-  top: 6px;
-  right: 14px;
-  z-index: 10;
 }
 
 .info-grid {

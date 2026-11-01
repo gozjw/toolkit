@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>文件传输</title>
+  <link rel="icon" href="{{FaviconDataURL}}">
+  <style>
+    body {
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #f5f7fa;
+      margin: 0;
+      padding: 24px;
+      color: #333;
+    }
+
+    .container {
+      max-width: 480px;
+      margin: 80px auto;
+      text-align: center;
+    }
+
+    .msg {
+      user-select: none;
+      font-size: 16px;
+      color: #666;
+      padding: 24px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+    }
+
+    .msg.error {
+      color: #f56c6c;
+    }
+
+    button {
+      user-select: none;
+      margin-top: 16px;
+      background: #409eff;
+      color: #fff;
+      border: none;
+      padding: 10px 32px;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #66b1ff;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="msg" id="msg">正在查找服务...</div>
+    <button id="retryBtn" onclick="location.reload()" style="display:none">刷新重试</button>
+  </div>
+  <script>
+    // ========== 配置区（直接改这里） ==========
+    const SEG = '{{Seg}}';
+    const START = {{Start}};
+    const COUNT = 20;
+    const PORT = {{Port}};
+    const TIMEOUT = 500;
+    const END = START + COUNT - 1;
+    // ========================================
+    let scanning = true;
+    let foundUrl = null;
+    function testHttp(ip, port, timeout) {
+      return new Promise(resolve => {
+        const url = `http://${ip}:${port}/`;
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), timeout);
+        fetch(url, {
+          mode: 'no-cors',
+          signal: ctrl.signal,
+          cache: 'no-store'
+        }).then(() => {
+          clearTimeout(timer);
+          resolve({ ip, url, ok: true });
+        }).catch(() => {
+          clearTimeout(timer);
+          resolve({ ip, url, ok: false });
+        });
+      });
+    }
+    async function scan() {
+      const total = COUNT;
+      let done = 0;
+      const CONCURRENCY = 6;
+      let current = START;
+      async function worker() {
+        while (current <= END && scanning && !foundUrl) {
+          const ip = `${SEG}.${current}`;
+          current++;
+          const r = await testHttp(ip, PORT, TIMEOUT);
+          done++;
+          if (r.ok) {
+            foundUrl = r.url;
+            break;
+          }
+        }
+      }
+      const workers = [];
+      for (let i = 0; i < CONCURRENCY; i++) workers.push(worker());
+      await Promise.all(workers);
+      if (foundUrl) {
+        window.location.href = foundUrl;
+      } else {
+        document.getElementById('msg').className = 'msg error';
+        document.getElementById('msg').textContent =
+          `未找到服务，IP：${SEG}.${START} ~ ${SEG}.${END}，端口：${PORT}，请确认服务已启动再刷新重试`;
+        document.getElementById('retryBtn').style.display = 'inline-block';
+      }
+    }
+    window.onload = scan;
+  </script>
+</body>
+
+</html>

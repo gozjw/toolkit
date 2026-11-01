@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -37,6 +38,9 @@ var indexETag string
 var iconData []byte
 var iconETag string
 
+//go:embed scan.html
+var scanData []byte
+
 const maxTextSize = 2 * 1024 * 1024
 const maxFileSize = 3 * 1024 * 1024 * 1024
 const defaultWorkDir = "upload"
@@ -52,6 +56,7 @@ var logPath string
 var configPath string
 var useTrash bool
 var noDownload bool
+var ip string
 var port int64 = 9527
 
 var textBuf bytes.Buffer
@@ -88,11 +93,13 @@ func main() {
 	tfTracker = NewTmpFileTracker()
 	defer tfTracker.Clean()
 
+	var ipMsg string
+	ip, ipMsg = utils.GetIP()
 	port = utils.GetFreePort(port)
 	addr := fmt.Sprintf(":%d", port)
-	host, ipMsg := utils.GetIP()
-	link := fmt.Sprintf("http://%s:%d", host, port)
+	link := fmt.Sprintf("http://%s:%d", ip, port)
 
+	parseScan()
 	indexETag = etag.Generate(string(indexHTMl), true)
 	iconETag = etag.Generate(string(iconData), true)
 
@@ -103,6 +110,7 @@ func main() {
 	router.GET("/info", info)
 	router.GET("/text", text)
 	router.GET("/list", list)
+	router.GET("/scan", scan)
 	router.GET("/dl/:file", download)
 	router.POST("/text", modText)
 	router.POST("/upload", upload)
@@ -394,6 +402,35 @@ func favicon(c *utils.Ctx) {
 	c.W.Header().Set("Content-Type", "image/ico")
 	c.W.Header().Set("ETag", iconETag)
 	c.W.Write(iconData)
+}
+
+func parseScan() {
+	seg := "192.168.1"
+	start := 1
+	parts := strings.Split(ip, ".")
+	if len(parts) == 4 {
+		seg = strings.Join(parts[:3], ".")
+		start, _ = strconv.Atoi(parts[3])
+		start -= 10
+		if start <= 0 {
+			start = 1
+		}
+	}
+	scanData = bytes.ReplaceAll(scanData, []byte("{{FaviconDataURL}}"),
+		fmt.Appendf(nil, "data:image/x-icon;base64,%s",
+			base64.StdEncoding.EncodeToString(iconData)))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Seg}}"), []byte(seg))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Start}}"), fmt.Append(nil, start))
+	scanData = bytes.ReplaceAll(scanData, []byte("{{Port}}"), fmt.Append(nil, port))
+}
+
+func scan(c *utils.Ctx) {
+	var fileName = "scan.html"
+	c.W.Header().Set("Content-Type", "text/html; charset=utf-8")
+	c.W.Header().Set("X-Content-Type-Options", "nosniff")
+	c.W.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"; filename*=UTF-8''%s", fileName, url.PathEscape(fileName)))
+	c.W.Header().Set("Content-Length", strconv.FormatInt(int64(len(scanData)), 10))
+	c.W.Write(scanData)
 }
 
 var uploadBufPool = sync.Pool{
