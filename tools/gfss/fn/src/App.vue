@@ -2,7 +2,7 @@
   <div class="transfer-container">
     <div class="info-card">
       <div class="title-btn-wrap">
-        <el-tooltip content="下载发现页" class="box-item" placement="bottom" v-if="!isMobile">
+        <el-tooltip content="下载发现页" hide-after="0" class="box-item" placement="bottom" v-if="!isMobile">
           <el-button circle class="title-ico-btn" size="small" :icon="Promotion" @click="downloadScan" />
         </el-tooltip>
         <div class="qrcode-btn-wrap">
