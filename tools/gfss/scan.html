@@ -50,17 +50,17 @@
       text-align: left;
     }
 
-    .form .row {
+    .row-wrap {
       margin-bottom: 14px;
     }
 
-    .form .col-wrap {
+    .col-wrap {
       display: flex;
       gap: 10px;
       margin-bottom: 14px;
     }
 
-    .col-wrap .col {
+    .col {
       width: 100%;
     }
 
@@ -124,24 +124,24 @@
     <div class="form" id="form" style="display:none">
       <div class="col-wrap">
         <div class="col">
-          <label>API Path</label>
+          <label for="inputApiPath">API Path</label>
           <input id="inputApiPath" type="text" value="/info" placeholder="/api/v1">
         </div>
         <div class="col">
-          <label>识别标记</label>
+          <label for="inputApiMarker">识别标记</label>
           <input id="inputApiMarker" type="text" value="{{Service}}" placeholder="服务标识">
         </div>
       </div>
-      <div class="row">
-        <label>起始 IP</label>
+      <div class="row-wrap">
+        <label for="inputIp">起始 IP</label>
         <input id="inputIp" type="text" value="{{StartIP}}" placeholder="例如 192.168.0.90">
       </div>
-      <div class="row">
-        <label>扫描数量（从起始 IP 起向后扫描多少个地址）</label>
+      <div class="row-wrap">
+        <label for="inputCount">扫描数量（从起始 IP 起向后扫描多少个地址）</label>
         <input id="inputCount" type="number" value="{{Count}}" min="1" max="254">
       </div>
-      <div class="row">
-        <label>端口</label>
+      <div class="row-wrap">
+        <label for="inputPort">端口</label>
         <input id="inputPort" type="number" value="{{Port}}" min="1" max="65535">
       </div>
       <div class="err" id="formError"></div>
