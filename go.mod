@@ -8,7 +8,6 @@ require (
 	github.com/go-vgo/robotgo v0.110.8
 	github.com/gorilla/websocket v1.5.3
 	github.com/hymkor/trash-go v0.3.0
-	golang.org/x/image v0.33.0
 	golang.org/x/sys v0.47.0
 )
 
@@ -37,5 +36,6 @@ require (
 	github.com/vcaesar/tt v0.20.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
+	golang.org/x/image v0.33.0 // indirect
 	golang.org/x/net v0.47.0 // indirect
 )
