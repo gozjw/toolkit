@@ -16,7 +16,7 @@
 
     .container {
       max-width: 480px;
-      margin: 60px auto;
+      margin: 40px auto;
       text-align: center;
     }
 
@@ -99,6 +99,11 @@
     button:hover {
       background: #66b1ff;
     }
+
+    .btn-disablle {
+      background: #66b1ff;
+      cursor: default;
+    }
   </style>
 </head>
 
@@ -170,11 +175,13 @@
       const msgEl = $('msg');
       const progEl = $('progress');
       const formEl = $('form');
+      const scanBtnEl = $('scanBtn');
 
       msgEl.className = 'msg';
       msgEl.textContent = '正在打开服务...';
       progEl.style.display = 'block';
-      formEl.style.display = 'none';
+      scanBtnEl.disabled = true;
+      scanBtnEl.classList.add("btn-disablle");
 
       let done = 0;
       let current = startOctet;
@@ -214,6 +221,8 @@
         `未找到服务，IP：${seg}.${startOctet} ~ ${seg}.${end}，端口：${port}，请确认服务已启动后修改参数重试`;
       progEl.style.display = 'none';
       formEl.style.display = 'block';
+      scanBtnEl.disabled = false;
+      scanBtnEl.removeAttribute("class");
     }
 
     function rescan() {
