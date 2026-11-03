@@ -641,20 +641,22 @@ func download(c *utils.Ctx) {
 	)
 }
 
-type fileInfo struct {
-	name     string
-	createAt time.Time
+type FileInfo struct {
+	Name           string `json:"name"`
+	CreateAt       string `json:"createAt"`
+	Size           string `json:"size"`
+	SimpleCreateAt string `json:"simpleCreateAt"`
+	createAt       time.Time
 }
 
-func getFiles() (files []string, err error) {
-	files = make([]string, 0)
+func getFiles() (list []FileInfo, err error) {
+	list = make([]FileInfo, 0)
 
 	fs, err := os.ReadDir(workDir)
 	if err != nil {
-		return files, err
+		return list, err
 	}
 
-	var list []fileInfo
 	for _, e := range fs {
 		if !e.Type().IsRegular() {
 			continue
@@ -671,11 +673,16 @@ func getFiles() (files []string, err error) {
 			continue
 		}
 
-		fi := fileInfo{name: name, createAt: info.ModTime()}
+		fi := FileInfo{
+			Name:     name,
+			Size:     utils.FormatBytesIEC(info.Size()),
+			createAt: info.ModTime()}
 		stat, ok := info.Sys().(*syscall.Win32FileAttributeData)
 		if ok {
 			fi.createAt = time.Unix(0, stat.CreationTime.Nanoseconds())
 		}
+		fi.SimpleCreateAt = fi.createAt.Format("15:04")
+		fi.CreateAt = fi.createAt.Format(time.DateTime)
 		list = append(list, fi)
 	}
 
@@ -683,9 +690,6 @@ func getFiles() (files []string, err error) {
 		return list[i].createAt.After(list[j].createAt)
 	})
 
-	for _, it := range list {
-		files = append(files, it.name)
-	}
 	return
 }
 

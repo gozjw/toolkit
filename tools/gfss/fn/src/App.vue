@@ -65,15 +65,22 @@
             <template #default="scope">
               <el-link type="primary" :class="['file-name-link', {
                 'no-download-file-name': sysInfo.noDownload,
-                'red-file-name': clickedFiles.has(scope.row),
-              }]" @click="handleDownload(scope.row)" underline="never">
-                {{ scope.row }}
+                'red-file-name': clickedFiles.has(scope.row.name),
+              }]" @click="handleDownload(scope.row.name)" underline="never">
+                {{ scope.row.name }}
               </el-link>
+            </template>
+          </el-table-column>
+          <el-table-column label="时间" width="60" align="center" v-if="!isMobile">
+            <template #default="scope">
+              <el-tooltip :content="scope.row.createAt + ' | ' + scope.row.size" placement="top" hide-after="0">
+                <div class="file-create-at">{{ scope.row.simpleCreateAt }}</div>
+              </el-tooltip>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="60" align="center">
             <template #default="scope">
-              <el-button type="danger" link @click="handleDelete(scope.row)">{{ sysInfo.delDesc }}</el-button>
+              <el-button type="danger" link @click="handleDelete(scope.row.name)">{{ sysInfo.delDesc }}</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -613,6 +620,10 @@ onUnmounted(() => {
   line-height: 1.4;
   padding: 4px 0;
   cursor: pointer;
+}
+
+.file-create-at {
+  cursor: default;
 }
 
 .no-download-file-name {
