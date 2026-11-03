@@ -70,11 +70,19 @@
             background: #6d28d9;
         }
 
+        button.orange {
+            background: #f97316;
+        }
+
+        button.orange:hover {
+            background: #ea580c;
+        }
+
         .wrap {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
             gap: 12px;
-            height: calc(100vh - 140px)
+            height: calc(100vh - 140px);
         }
 
         @media(max-width:900px) {
@@ -161,6 +169,7 @@
         <button id="btnClear" class="gray">清空</button>
         <button id="btnPng" class="green">下载PNG</button>
         <button id="btnIco" class="purple">下载ICO</button>
+        <button id="btnPicker" class="orange">调用取色器</button>
     </div>
 
     <div class="wrap">
@@ -169,8 +178,8 @@
             <textarea id="svgInput"></textarea>
         </div>
         <div class="col">
-            <label>输出 DataURI</label>
-            <textarea id="outUri" readonly></textarea>
+            <label>输出</label>
+            <textarea id="outArea" readonly></textarea>
         </div>
         <div class="col">
             <label>预览</label>
@@ -182,7 +191,7 @@
     <div class="toast" id="toast"></div>
     <script>
         const svgInputEl = document.getElementById('svgInput');
-        const outUriEl = document.getElementById('outUri');
+        const outAreaEl = document.getElementById('outArea');
         const previewImgEl = document.getElementById('previewImg');
         const toastEl = document.getElementById('toast');
 
@@ -190,8 +199,8 @@
             svgInputEl.select();
         });
 
-        outUriEl.addEventListener('focus', () => {
-            outUriEl.select();
+        outAreaEl.addEventListener('focus', () => {
+            outAreaEl.select();
         });
 
         function utf8ToBase64(str) {
@@ -218,7 +227,7 @@
             if (!s.trim()) { return }
             try {
                 const uri = 'data:image/svg+xml;base64,' + utf8ToBase64(s);
-                outUriEl.value = uri;
+                outAreaEl.value = uri;
                 previewImgEl.src = uri;
             } catch (e) {
                 showToast(e.message);
@@ -231,7 +240,7 @@
             try {
                 const escaped = svgCustomEscape(s);
                 const uri = 'data:image/svg+xml;charset=utf-8,' + escaped;
-                outUriEl.value = uri;
+                outAreaEl.value = uri;
                 previewImgEl.src = uri;
             } catch (e) {
                 showToast(e.message);
@@ -239,13 +248,32 @@
         };
 
         document.getElementById('btnCopy').onclick = async () => {
-            if (!outUriEl.value) return;
+            if (!outAreaEl.value) return;
             try {
-                await navigator.clipboard.writeText(outUriEl.value);
+                await navigator.clipboard.writeText(outAreaEl.value);
                 showToast('已复制输出到剪切板');
             } catch (e) {
-                outUriEl.select();
+                outAreaEl.select();
                 document.execCommand('copy');
+            }
+        };
+
+        document.getElementById('btnPicker').onclick = async () => {
+            if (!window.EyeDropper) {
+                showToast("当前浏览器不支持取色器（Chrome/Edge可用）");
+                return;
+            }
+            try {
+                const eyeDropper = new EyeDropper();
+                const result = await eyeDropper.open();
+                const colorHex = result.sRGBHex;
+                outAreaEl.value = colorHex;
+                outAreaEl.focus();
+                showToast("取色成功：" + colorHex);
+            } catch (err) {
+                if (err.name !== 'AbortError') {
+                    showToast("取色失败：" + err.message);
+                }
             }
         };
 
@@ -336,7 +364,7 @@
 
         document.getElementById('btnClear').onclick = () => {
             svgInputEl.value = '';
-            outUriEl.value = '';
+            outAreaEl.value = '';
             previewImgEl.src = ""
         };
 
