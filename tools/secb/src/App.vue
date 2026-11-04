@@ -39,7 +39,7 @@
 
         <el-form-item label="内容（双击全选）" prop="value">
           <el-badge class="w-full" is-dot :hidden="formData.valueDotHidden">
-            <el-input v-model="formData.value" type="textarea" :rows="7" clearable placeholder="请输入内容..."
+            <el-input v-model="formData.value" type="textarea" :rows="8" clearable placeholder="请输入内容..."
               @input="handleValueInput" @dblclick="handleDblClickValue" />
           </el-badge>
         </el-form-item>
