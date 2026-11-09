@@ -255,11 +255,15 @@ const refresh = async () => {
 }
 
 const sendText = async () => {
+  let msg = `发送文本成功`
   try {
     await axios.post(`/text`, { text: plainText.value })
-    ElMessage.success('发送成功')
+    if (plainText.value.length <= 0) {
+      msg = `清空文本成功`
+    }
+    ElMessage.success(msg)
   } catch (err) {
-    let msg = `发送失败`
+    msg = `发送文本失败`
     if (err.response) {
       msg += `：${err.response.data.msg}`;
     }
