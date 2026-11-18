@@ -18,16 +18,17 @@
 
         <el-form-item label="密码" prop="password">
           <el-input v-model="formData.password" type="password" @keyup.enter="handleDecode" placeholder="用于加密或解密"
-            clearable show-password />
+            clearable show-password @input="onPasswordInput" />
         </el-form-item>
 
         <el-form-item label="确认密码" prop="confirmPassword">
-          <el-input v-model="formData.confirmPassword" type="password" placeholder="用于加密" clearable />
+          <el-input v-model="formData.confirmPassword" type="password" placeholder="用于加密" clearable
+            @keyup.enter="handleDownload" />
         </el-form-item>
 
         <div class="button-group">
-          <el-button class="flex-1" type="primary" @click="handleDecode">解 密</el-button>
-          <el-button class="flex-1" type="success" @click="handleDownload">加密并下载</el-button>
+          <el-button class="flex-1" type="primary" @click="handleDecode" :loading="decoding">解 密</el-button>
+          <el-button class="flex-1" type="success" @click="handleDownload" :loading="encoding">加密并下载</el-button>
         </div>
 
         <el-form-item label="选项" prop="label">
@@ -56,11 +57,10 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, markRaw } from 'vue'
 import { useDark } from '@vueuse/core'
-import { Document } from '@element-plus/icons-vue'
-import { Sunny, Moon } from '@element-plus/icons-vue'
-import { encryptData, decryptData } from '@/utils/cryptoService';
+import { Document, Sunny, Moon } from '@element-plus/icons-vue'
+import { encryptData, decryptData } from '@/utils/crypto.service';
 
 const isDark = useDark({
   storage: {
@@ -72,13 +72,15 @@ const isDark = useDark({
 
 const formRef = ref(null)
 const fileInputRef = ref(null)
-
+const decoding = ref(false)
+const encoding = ref(false)
 const options = ref([])
 
 const clearOptions = () => {
   options.value = []
   formData.label = ""
   formData.value = ""
+  formData.valueDotHidden = true
 }
 
 const formData = reactive({
@@ -136,9 +138,13 @@ const handleRefreshValue = () => {
 }
 
 const handleAddOrModify = () => {
-  if (!formData.label || !formData.value) return
-
-  if (options.value.find(item => item.label === formData.label)) {
+  const label = formData.label.trim()
+  const val = formData.value.trim()
+  if (!label || !val) {
+    ElMessage.warning('标签和内容不能为空')
+    return
+  }
+  if (options.value.find(item => item.label === label)) {
     handleModify()
   } else {
     handleAdd()
@@ -147,8 +153,8 @@ const handleAddOrModify = () => {
 
 const handleAdd = () => {
   options.value.push({
-    label: formData.label,
-    value: formData.value
+    label: formData.label.trim(),
+    value: formData.value.trim()
   });
   sortOptions()
   formData.valueDotHidden = true
@@ -156,39 +162,37 @@ const handleAdd = () => {
 }
 
 const handleModify = () => {
-  if (formData.label) {
-    ElMessageBox.confirm('确认修改：' + formData.label, '', {
-      cancelButtonText: "取 消",
-      confirmButtonText: '确 认',
-      type: 'warning',
-    }).then(() => {
-      const item = options.value.find(item => item.label === formData.label)
-      item.value = formData.value
-      formData.valueDotHidden = true
-      ElMessage.success("修改成功")
-    })
-  }
+  if (!formData.label) return
+  ElMessageBox.confirm('确认修改：' + formData.label, '', {
+    cancelButtonText: "取 消",
+    confirmButtonText: '确 认',
+    type: 'warning',
+  }).then(() => {
+    const item = options.value.find(item => item.label === formData.label)
+    item.value = formData.value.trim()
+    formData.valueDotHidden = true
+    ElMessage.success("修改成功")
+  }).catch(() => { })
 }
 
 const handleDelete = () => {
-  if (formData.label) {
-    ElMessageBox.confirm('确认删除：' + formData.label, '', {
-      cancelButtonText: "取 消",
-      confirmButtonText: '确 认',
-      type: 'warning',
-    }).then(() => {
-      options.value = options.value.filter(item => item.label !== formData.label)
-      if (options.value.length) {
-        formData.label = options.value[0].label
-        formData.value = ""
-      } else {
-        formData.label = ""
-        formData.value = ""
-      }
-      formData.valueDotHidden = true
-      ElMessage.success("删除成功")
-    })
-  }
+  if (!formData.label) return
+  ElMessageBox.confirm('确认删除：' + formData.label, '', {
+    cancelButtonText: "取 消",
+    confirmButtonText: '确 认',
+    type: 'warning',
+  }).then(() => {
+    options.value = options.value.filter(item => item.label !== formData.label)
+    if (options.value.length) {
+      formData.label = options.value[0].label
+      formData.value = ""
+    } else {
+      formData.label = ""
+      formData.value = ""
+    }
+    formData.valueDotHidden = true
+    ElMessage.success("删除成功")
+  }).catch(() => { })
 }
 
 const handleValueInput = (value) => {
@@ -208,22 +212,31 @@ const triggerFileInput = () => { fileInputRef.value?.click() }
 const handleFileChange = (event) => {
   const files = event.target.files
   if (files && files.length > 0) {
-    formData.fileRaw = files[0]
+    formData.fileRaw = markRaw(files[0])
     formData.fileName = files[0].name
   }
+  event.target.value = ''
   clearOptions()
+}
+
+const onPasswordInput = () => {
+  if (formData.confirmPassword) {
+    formRef.value?.validateField('confirmPassword')
+  }
 }
 
 const handleDecode = async () => {
   if (!formRef.value) return
-
+  decoding.value = true
   formRef.value.validateField(['fileName', 'password'], async (isValid) => {
     if (isValid) {
       try {
         if (formData.fileRaw) {
           const encryptedContent = await readFileAsText(formData.fileRaw)
           const jsonString = await decryptData(encryptedContent, formData.password)
-          options.value = JSON.parse(jsonString)
+          const parsed = JSON.parse(jsonString)
+          if (!Array.isArray(parsed)) throw new Error('格式错误')
+          options.value = parsed
           sortOptions()
           if (options.value.length) {
             formData.label = options.value[0].label
@@ -238,19 +251,25 @@ const handleDecode = async () => {
         clearOptions()
         console.error(error)
         ElMessage.error('密码或文件错误')
+      } finally {
+        decoding.value = false
       }
     } else {
       setTimeout(() => {
-        formRef.value.clearValidate()
+        formRef.value?.clearValidate()
       }, 3000)
+      decoding.value = false
     }
   })
 }
 
 const handleDownload = async () => {
-  if (!options.value.length) return
+  if (!options.value.length) {
+    ElMessage.warning('暂无数据可保存')
+    return
+  }
   if (!formRef.value) return
-
+  encoding.value = true
   formRef.value.validateField(['password', 'confirmPassword'], async (isValid) => {
     if (isValid) {
       try {
@@ -265,14 +284,18 @@ const handleDownload = async () => {
         downloadLink.click()
         document.body.removeChild(downloadLink)
         URL.revokeObjectURL(downloadUrl)
+        ElMessage.success('加密文件已下载')
       } catch (error) {
         console.error(error)
         ElMessage.error('加密并下载出现未知错误')
+      } finally {
+        encoding.value = false
       }
     } else {
       setTimeout(() => {
-        formRef.value.clearValidate()
+        formRef.value?.clearValidate()
       }, 3000)
+      encoding.value = false
     }
   })
 }
@@ -290,7 +313,9 @@ const newFileName = () => {
   if (!cleanName) {
     return `${timeStamp}.secb`
   }
-
+  if (!cleanName.endsWith('.secb')) {
+    return `${cleanName}_${timeStamp}.secb`
+  }
   const timeRegex = /(_)?(\d{8})(?=\.secb$)/
   if (timeRegex.test(cleanName)) {
     return cleanName.replace(timeRegex, (match, p1) => {
@@ -303,11 +328,11 @@ const newFileName = () => {
   }
 }
 
-// 读取本地文本文件
 const readFileAsText = (file) => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader()
     reader.onload = (e) => resolve(e.target.result)
+    reader.onerror = reject
     reader.readAsText(file)
   })
 }
