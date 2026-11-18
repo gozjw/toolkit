@@ -450,6 +450,7 @@ func upload(c *utils.Ctx) {
 		return
 	}
 
+	var hasFile bool
 	var finalName string
 	var total int64
 
@@ -465,20 +466,21 @@ func upload(c *utils.Ctx) {
 
 		// 只处理名为 "file" 的文件字段
 		if part.FormName() != "file" {
-			part.Close()
+			_ = part.Close()
 			continue
 		}
+		hasFile = true
 
 		fname := filepath.Base(part.FileName())
 		if fname == "" {
-			part.Close()
+			_ = part.Close()
 			writeErrorRsp(c, http.StatusBadRequest, "没有文件名", nil)
 			return
 		}
 
 		out, err := os.CreateTemp(workDir, "*"+tmpSuffix)
 		if err != nil {
-			part.Close()
+			_ = part.Close()
 			writeErrorRsp(c, http.StatusInternalServerError, "创建临时文件失败", err, fname)
 			return
 		}
@@ -486,23 +488,23 @@ func upload(c *utils.Ctx) {
 		fnameTmp := filepath.Base(fPathTmp)
 		tfTracker.Push(fnameTmp, out)
 
-		defer os.Remove(fPathTmp)
-
 		buf := uploadBufPool.Get().([]byte)
 		n, err := io.CopyBuffer(out, io.LimitReader(part, maxFileSize+1), buf)
 		uploadBufPool.Put(buf)
 
-		out.Close()
-		part.Close()
+		_ = out.Close()
+		_ = part.Close()
 		tfTracker.Pop(fnameTmp)
 
 		if n > maxFileSize {
+			_ = os.Remove(fPathTmp)
 			writeErrorRsp(c, http.StatusRequestEntityTooLarge,
 				fmt.Sprintf("文件超出%s限制", utils.FormatBytesIEC(maxFileSize)), nil, fname)
 			return
 		}
 
 		if err != nil {
+			_ = os.Remove(fPathTmp)
 			writeErrorRsp(c, http.StatusInternalServerError, "保存文件失败", err, fnameTmp)
 			return
 		}
@@ -521,21 +523,22 @@ func upload(c *utils.Ctx) {
 
 			f, err := os.OpenFile(finalPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0666)
 			if err == nil {
-				f.Close()
+				_ = f.Close()
 				break
 			}
 
 			// 说明是没有写入权限或其他严重错误，直接中断
 			if !os.IsExist(err) {
+				_ = os.Remove(fPathTmp)
 				writeErrorRsp(c, http.StatusInternalServerError, "检查目标文件冲突失败", err, fname)
 				return
 			}
-
 			counter++
 		}
 
 		if err = os.Rename(fPathTmp, finalPath); err != nil {
-			os.Remove(finalPath)
+			_ = os.Remove(fPathTmp)
+			_ = os.Remove(finalPath)
 			writeErrorRsp(c, http.StatusInternalServerError, "重命名文件失败", err, fnameTmp)
 			return
 		}
@@ -545,7 +548,7 @@ func upload(c *utils.Ctx) {
 	}
 
 	c.W.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	if total == 0 {
+	if !hasFile {
 		writeErrorRsp(c, http.StatusBadRequest, "没有检测到文件上传", nil)
 		return
 	}
@@ -643,10 +646,10 @@ func download(c *utils.Ctx) {
 
 type FileInfo struct {
 	Name           string `json:"name"`
-	CreateAt       string `json:"createAt"`
 	Size           string `json:"size"`
-	SimpleCreateAt string `json:"simpleCreateAt"`
-	createAt       time.Time
+	LastTime       string `json:"lastTime"`
+	SimpleLastTime string `json:"simpleLastTime"`
+	lastTime       time.Time
 }
 
 func getFiles() (list []FileInfo, err error) {
@@ -676,18 +679,21 @@ func getFiles() (list []FileInfo, err error) {
 		fi := FileInfo{
 			Name:     name,
 			Size:     utils.FormatBytesIEC(info.Size()),
-			createAt: info.ModTime()}
+			lastTime: info.ModTime()}
 		stat, ok := info.Sys().(*syscall.Win32FileAttributeData)
 		if ok {
-			fi.createAt = time.Unix(0, stat.CreationTime.Nanoseconds())
+			createTime := time.Unix(0, stat.CreationTime.Nanoseconds())
+			if createTime.After(fi.lastTime) {
+				fi.lastTime = createTime
+			}
 		}
-		fi.SimpleCreateAt = fi.createAt.Format("15:04")
-		fi.CreateAt = fi.createAt.Format(time.DateTime)
+		fi.SimpleLastTime = fi.lastTime.Format("15:04")
+		fi.LastTime = fi.lastTime.Format(time.DateTime)
 		list = append(list, fi)
 	}
 
 	sort.Slice(list, func(i, j int) bool {
-		return list[i].createAt.After(list[j].createAt)
+		return list[i].lastTime.After(list[j].lastTime)
 	})
 
 	return

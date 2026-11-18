@@ -73,8 +73,8 @@
           </el-table-column>
           <el-table-column label="时间" width="60" align="center" v-if="!isMobile">
             <template #default="scope">
-              <el-tooltip :content="scope.row.createAt + ' | ' + scope.row.size" placement="top" hide-after="0">
-                <div class="file-create-at">{{ scope.row.simpleCreateAt }}</div>
+              <el-tooltip :content="scope.row.lastTime + ' | ' + scope.row.size" placement="top" hide-after="0">
+                <div class="file-create-at">{{ scope.row.simpleLastTime }}</div>
               </el-tooltip>
             </template>
           </el-table-column>
