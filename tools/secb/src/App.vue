@@ -40,8 +40,8 @@
 
         <el-form-item label="内容（双击全选）" prop="value">
           <el-badge class="w-full" is-dot :hidden="formData.valueDotHidden">
-            <el-input v-model="formData.value" type="textarea" :rows="8" clearable placeholder="请输入内容..."
-              @input="handleValueInput" @dblclick="handleDblClickValue" />
+            <el-input v-model="formData.value" class="font-mono" type="textarea" :rows="8" clearable
+              placeholder="请输入内容..." @input="handleValueInput" @dblclick="handleDblClickValue" />
           </el-badge>
         </el-form-item>
 
@@ -339,6 +339,12 @@ const readFileAsText = (file) => {
 </script>
 
 <style scoped>
+.font-mono {
+  font-family: "Cascadia Code", "JetBrains Mono", "SF Mono", Consolas, Menlo,
+    "DejaVu Sans Mono", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    monospace;
+}
+
 .theme-switch-wrapper {
   position: absolute;
   right: 20px;
