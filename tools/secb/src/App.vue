@@ -46,7 +46,7 @@
         </el-form-item>
 
         <div class="button-group">
-          <el-button class="flex-1" type="primary" @click="handleRefreshValue">刷 新</el-button>
+          <el-button class="flex-1" type="primary" @click="handleViewValue">查 看</el-button>
           <el-button class="flex-1" type="primary" @click="handleAddOrModify">添加/修改</el-button>
           <el-button class="flex-1" type="danger" @click="handleDelete">删 除</el-button>
         </div>
@@ -129,7 +129,7 @@ const handleLabelChange = (value) => {
   formData.valueDotHidden = true
 }
 
-const handleRefreshValue = () => {
+const handleViewValue = () => {
   const item = options.value.find(item => item.label === formData.label)
   if (item) {
     formData.value = item.value
@@ -227,11 +227,11 @@ const onPasswordInput = () => {
 
 const handleDecode = async () => {
   if (!formRef.value) return
-  decoding.value = true
   formRef.value.validateField(['fileName', 'password'], async (isValid) => {
     if (isValid) {
       try {
         if (formData.fileRaw) {
+          decoding.value = true
           const encryptedContent = await readFileAsText(formData.fileRaw)
           const jsonString = await decryptData(encryptedContent, formData.password)
           const parsed = JSON.parse(jsonString)
@@ -258,7 +258,6 @@ const handleDecode = async () => {
       setTimeout(() => {
         formRef.value?.clearValidate()
       }, 3000)
-      decoding.value = false
     }
   })
 }
@@ -269,10 +268,10 @@ const handleDownload = async () => {
     return
   }
   if (!formRef.value) return
-  encoding.value = true
   formRef.value.validateField(['password', 'confirmPassword'], async (isValid) => {
     if (isValid) {
       try {
+        encoding.value = true
         const jsonString = JSON.stringify(options.value)
         const encryptedBase64Result = await encryptData(jsonString, formData.password)
         const blob = new Blob([encryptedBase64Result], { type: 'application/octet-stream' })
@@ -295,7 +294,6 @@ const handleDownload = async () => {
       setTimeout(() => {
         formRef.value?.clearValidate()
       }, 3000)
-      encoding.value = false
     }
   })
 }

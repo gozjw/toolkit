@@ -5,29 +5,40 @@ const IV_LENGTH = 12;
 
 const pending = new Map();
 let msgId = 0;
+let worker = null;
 
-const worker = new CryptoWorker();
-
-worker.onmessage = (ev) => {
-  const { id, ok, key, error } = ev.data;
-  const handler = pending.get(id);
-  if (!handler) return;
-  pending.delete(id);
-  if (ok) handler.resolve(key);
-  else handler.reject(new Error(error));
-};
+function getWorker() {
+  if (!worker) {
+    worker = new CryptoWorker();
+    worker.onmessage = (ev) => {
+      const { id, ok, key, error } = ev.data;
+      const handler = pending.get(id);
+      if (!handler) return;
+      pending.delete(id);
+      if (ok) handler.resolve(key);
+      else handler.reject(new Error(error));
+    };
+    worker.onerror = (err) => {
+      pending.forEach(({ reject }) => reject(new Error(err.message || 'Worker 执行失败')));
+      pending.clear();
+      worker = null;
+    };
+  }
+  return worker;
+}
 
 function deriveKeyFromPassword(password, salt) {
   return new Promise((resolve, reject) => {
     const id = ++msgId;
     pending.set(id, { resolve, reject });
-    worker.postMessage({ id, type: 'derive', password, salt });
+    getWorker().postMessage({ id, type: 'derive', password, salt });
   });
 }
 
 function uint8ToBase64(u8) {
   return btoa(String.fromCharCode(...u8));
 }
+
 function base64ToUint8(b64) {
   return Uint8Array.from(atob(b64), c => c.charCodeAt(0));
 }

@@ -22,6 +22,8 @@ export default defineConfig({
     }),
   ],
   build: {
+    // 设为 0 表示完全禁用资源转 Base64 内联，所有资源独立输出为文件
+    assetsInlineLimit: 0,
     rollupOptions: {
       onwarn(warning, warn) {
         // 核心：如果是这个无效注释的警告，直接跳过（return），不打印也不报错
